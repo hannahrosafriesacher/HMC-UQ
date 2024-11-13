@@ -1,0 +1,20 @@
+#ignore data
+**data
+
+#ignore results
+**/SingleTask/
+**/SingleTask_vsc/
+
+#ignore figures
+**/figures/
+
+
+#ignore outdated code
+**/SingleTask_old/
+**/SingleTask_oldhps/
+
+#ignore logs
+**/wandb/
+**/logs/
+
+

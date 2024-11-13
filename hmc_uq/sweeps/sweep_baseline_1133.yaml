@@ -1,0 +1,15 @@
+program: hmc_uq/baseline_hyperParamTuning_WB.py
+name: hp_1133
+project: uq-hmc
+method: grid
+parameters:
+  target_id:
+    values: [1133]
+  learning_rate:
+    values: [1e-5, 1e-4, 1e-3, 1e-2, 0.1]
+  weight_decay:
+    values: [1e-5, 1e-4, 1e-3, 1e-2, 0.1]
+  hidden_sizes:
+    values: [4,5,6,7,8,9,10,15,20,25,30]
+  dropout:
+    values: [0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
