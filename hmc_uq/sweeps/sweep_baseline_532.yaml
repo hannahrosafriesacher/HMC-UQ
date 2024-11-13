@@ -1,0 +1,17 @@
+program: hmc_uq/baseline_hyperParamTuning_WB.py
+name: hp_532_test
+project: uq-hmc
+method: grid
+parameters:
+  target_id:
+    values: [532]
+  nr_layers:
+    values: [1, 2, 3]
+  learning_rate:
+    values: [1e-3]
+  weight_decay:
+    values: [1e-3]
+  hidden_sizes:
+    values: [6]
+  dropout:
+    values: [0.6]
