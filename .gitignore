@@ -2,16 +2,13 @@
 **data
 
 #ignore results
-**/SingleTask/
-**/SingleTask_vsc/
+**/results/
 
 #ignore figures
 **/figures/
 
-
 #ignore outdated code
-**/SingleTask_old/
-**/SingleTask_oldhps/
+**/hmc_uq/files_CalibrationStudy/
 
 #ignore logs
 **/wandb/
