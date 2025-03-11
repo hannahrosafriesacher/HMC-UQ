@@ -1,4 +1,6 @@
 import os
+import yaml
+from pathlib import Path
 import argparse
 import sparsechem as sc
 import numpy as np
@@ -34,11 +36,16 @@ parser.add_argument('--nr_samples', type=int, default=150)
 parser.add_argument('--L', type=int, default=150)
 parser.add_argument('--tau_out', type=float, default=1.)
 parser.add_argument('--model_loss', type=str, default='binary_class_linear_output')
+parser.add_argument('--save_params', type=bool, default='False')
+parser.add_argument('--evaluate_testset', type=bool, default='False')
 args = parser.parse_args()
 
-run = wandb.init(project = 'uq-hmc_runs', 
-                 tags = ['hamiltorch'],
-                 group = 'test_ht',
+project = 'UQ-HMC_Tune' if args.evaluate_testset else 'UQ-HMC_Eval'
+group = 'hmc_tune' if args.evaluate_testset else 'hmc_eval'    
+
+run = wandb.init(project = project, 
+                 tags = ['hmc'],
+                 group = group,
                  config = args)
 
 nr_layers = wandb.config.nr_layers
@@ -148,3 +155,38 @@ wandb.log({f'Rhat vs Burn-in': sample_eval.rhat_burnin_plot()})
 wandb.log({f'IPS vs Burn-in': sample_eval.ips_burnin_plot()})
 wandb.log({f'Autocorrelation': sample_eval.autocorrelation_plot()})
 wandb.log(logs)
+
+if wandb.config.evaluate_testset:
+    #TODO: save Test set predictions
+    pass
+
+#Log Acceptance rate
+
+#Define path
+if wandb.config.save_params:
+    ckpt_dir = f'logs/HMC/'
+    os.makedirs(ckpt_dir, exist_ok = True)
+    ckp_path = f'{ckpt_dir}{target_id}_e{step_size}_l{L}_nrs{nr_samples}_nrc{nr_chains}'
+
+    #Save model
+    np.save(ckp_path, params_chains)
+
+    ckpt_lookup = f'configs/ckpt_paths/HMC.yaml'
+    #Save to config file
+    if os.path.exists(ckpt_lookup):
+        lookup = yaml.safe_load(open(ckpt_lookup, 'r'))
+        n = len(lookup.keys())
+        if n == 1 and lookup[0] is None:
+            n = 0
+
+    else:
+        lookup = {}
+        n = 0
+    if ckp_path not in lookup.values():
+
+        lookup[n] = ckp_path
+        yaml.dump(lookup, open(ckpt_lookup, 'w'))
+
+    
+
+

@@ -12,6 +12,7 @@
 
 #ignore logs
 **/wandb/
-**/logs/
+**/logs/*
+**/configs/ckpt_paths/*
 
 
