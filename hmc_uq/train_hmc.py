@@ -16,9 +16,11 @@ import torch
 import hamiltorch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.utils.data import DataLoader
 
 from utils.models import MLP
 from utils.evaluation import PredictivePerformance, SampleEvaluation
+from utils.data import SparseDataset
 import wandb
 sns.set_style('whitegrid')
 
@@ -74,32 +76,15 @@ X_singleTask=sc.load_sparse('data/chembl_29/chembl_29_X.npy')
 Y_singleTask=sc.load_sparse('data/chembl_29/chembl_29_thresh.npy')[:,target_id]
 folding=np.load('data/chembl_29/folding.npy')
 
-#Training Data
-X_tr_np=X_singleTask[np.isin(folding, tr_fold)].todense()
-Y_tr_np=Y_singleTask[np.isin(folding, tr_fold)].todense()
+train_dataset = SparseDataset(X_singleTask, Y_singleTask, folding, tr_fold, device)
+val_dataset = SparseDataset(X_singleTask, Y_singleTask, folding, va_fold, device)
 
-#filter for nonzero values in Training Data
-nonzero=np.nonzero(Y_tr_np)[0]
-X_tr_np=X_tr_np[nonzero]
-Y_tr_np=Y_tr_np[nonzero]
-Y_tr_np[Y_tr_np==-1]=0
+# Create DataLoaders
+dataloader_tr = DataLoader(train_dataset, batch_size=200, shuffle=True)
+dataloader_val = DataLoader(val_dataset, batch_size=200, shuffle=False)
 
-#validation Data
-X_val_np=X_singleTask[folding==va_fold].todense()
-Y_val_np=Y_singleTask[folding==va_fold].todense()
+num_input_features = train_dataset.__getinputdim__()
 
-#filter for nonzero values in Validation data
-nonzero=np.nonzero(Y_val_np)[0]
-X_val_np=X_val_np[nonzero]
-Y_val_np=Y_val_np[nonzero]
-Y_val_np[Y_val_np==-1]=0
-
-#TODO: 
-X_train=torch.from_numpy(X_tr_np).float().to(device)
-Y_train=torch.from_numpy(Y_tr_np).to(device)
-X_val=torch.from_numpy(X_val_np).float().to(device)
-Y_val=torch.from_numpy(Y_val_np).to(device)
-num_input_features=X_tr_np.shape[1]
 wandb.config['dim_input'] = num_input_features
     
 
@@ -115,14 +100,14 @@ for chain in range(nr_chains):
     tau_list = [tau]
     tau_list = torch.tensor(tau_list).to(device)
 
-    params_gpu = hamiltorch.sample_model(net, X_train, Y_train, params_init=params_init, num_samples=nr_samples,
+    params_gpu = hamiltorch.sample_model(net, x = train_dataset.__getdatasets__()[0], y = train_dataset.__getdatasets__()[1], params_init=params_init, num_samples=nr_samples,
                                 step_size=step_size, num_steps_per_sample=L,tau_out=tau_out,tau_list=tau_list, model_loss=model_loss)
 
     params = torch.stack(params_gpu, dim = 0).cpu().numpy()
     params_chains.append(params)
     
     #get predictions for validation ds
-    pred_list, log_prob_list = hamiltorch.predict_model(net, x=X_val, y=Y_val, samples=params_gpu, model_loss=model_loss, tau_out=tau_out, tau_list=tau_list)
+    pred_list, log_prob_list = hamiltorch.predict_model(net, test_loader = dataloader_val, samples=params_gpu, model_loss=model_loss, tau_out=tau_out, tau_list=tau_list)
     pred = torch.squeeze(pred_list, 2)  
     preds_chains.append(pred)
 
@@ -130,7 +115,7 @@ params_chains = np.stack(params_chains)
 preds_chains = torch.stack(preds_chains)
 
 
-val_performance = PredictivePerformance(preds_chains, Y_val)
+val_performance = PredictivePerformance(preds_chains, val_dataset.__getdatasets__()[1])
 val_performance.calculate_performance()
 
 nll_val, plot_nll_val = val_performance.nll(return_plot=True)
@@ -178,12 +163,10 @@ if wandb.config.save_params:
         n = len(lookup.keys())
         if n == 1 and lookup[0] is None:
             n = 0
-
     else:
         lookup = {}
         n = 0
     if ckp_path not in lookup.values():
-
         lookup[n] = ckp_path
         yaml.dump(lookup, open(ckpt_lookup, 'w'))
 
