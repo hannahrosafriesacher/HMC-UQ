@@ -32,6 +32,7 @@ parser.add_argument('--hidden_sizes', type=int, default=None)
 parser.add_argument('--dropout', type=float, default=0)
 parser.add_argument('--tr_fold', type=list, default=[2,3,4])
 parser.add_argument('--va_fold', type=int, default=1)
+parser.add_argument('--te_fold', type=int, default=0)
 parser.add_argument('--nr_chains', type=int, default=5)
 parser.add_argument('--step_size', type=float, default=1e-3)
 parser.add_argument('--nr_samples', type=int, default=150)
@@ -42,8 +43,12 @@ parser.add_argument('--save_params', type=bool, default='False')
 parser.add_argument('--evaluate_testset', type=bool, default='False')
 args = parser.parse_args()
 
-project = 'UQ-HMC_Tune' if args.evaluate_testset else 'UQ-HMC_Eval'
-group = 'hmc_tune' if args.evaluate_testset else 'hmc_eval'    
+if args.evaluate_testset:
+    project = 'UQ-HMC_Eval'
+    group = 'hmc_eval'
+else:
+    project = 'UQ-HMC_Tune'
+    group = 'hmc_tune'  
 
 run = wandb.init(project = project, 
                  tags = ['hmc'],
@@ -55,6 +60,7 @@ target_id = wandb.config.TargetID
 hidden_sizes = wandb.config.hidden_sizes
 weight_decay = wandb.config.weight_decay
 dropout = wandb.config.dropout
+
 nr_chains = wandb.config.nr_chains
 step_size = wandb.config.step_size #Epsilon 
 nr_samples = wandb.config.nr_samples
@@ -64,6 +70,9 @@ model_loss = wandb.config.model_loss
 
 tr_fold = np.array(wandb.config.tr_fold)
 va_fold=wandb.config.va_fold
+te_fold=wandb.config.te_fold
+
+evaluate_testset = wandb.config.evaluate_testset
 
 
 hamiltorch.set_random_seed(123)
@@ -79,17 +88,20 @@ folding=np.load('data/chembl_29/folding.npy')
 train_dataset = SparseDataset(X_singleTask, Y_singleTask, folding, tr_fold, device)
 val_dataset = SparseDataset(X_singleTask, Y_singleTask, folding, va_fold, device)
 
-# Create DataLoaders
 dataloader_tr = DataLoader(train_dataset, batch_size=200, shuffle=True)
 dataloader_val = DataLoader(val_dataset, batch_size=200, shuffle=False)
+params_chains = []
+preds_chains_val = []
+
+if evaluate_testset:
+    te_dataset = SparseDataset(X_singleTask, Y_singleTask, folding, te_fold, device)
+    dataloader_te = DataLoader(te_dataset, batch_size=200, shuffle=False)
+    preds_chains_te = []
 
 num_input_features = train_dataset.__getinputdim__()
 
 wandb.config['dim_input'] = num_input_features
     
-
-params_chains = []
-preds_chains = []
 for chain in range(nr_chains):
     #TODO: check if initilization is random
     net=MLP(hidden_sizes=hidden_sizes, input_features=num_input_features, output_features=1, dropout=dropout)
@@ -107,24 +119,30 @@ for chain in range(nr_chains):
     params_chains.append(params)
     
     #get predictions for validation ds
-    pred_list, log_prob_list = hamiltorch.predict_model(net, test_loader = dataloader_val, samples=params_gpu, model_loss=model_loss, tau_out=tau_out, tau_list=tau_list)
-    pred = torch.squeeze(pred_list, 2)  
-    preds_chains.append(pred)
+    pred_list_val, log_prob_list_val = hamiltorch.predict_model(net, test_loader = dataloader_val, samples=params_gpu, model_loss=model_loss, tau_out=tau_out, tau_list=tau_list)
+    pred_val = torch.squeeze(pred_list_val, 2)  
+    preds_chains_val.append(pred_val)
+
+    if evaluate_testset:
+        pred_list_te, log_prob_list_te = hamiltorch.predict_model(net, test_loader = dataloader_te, samples=params_gpu, model_loss=model_loss, tau_out=tau_out, tau_list=tau_list)
+        pred_te = torch.squeeze(pred_list_te, 2)  
+        preds_chains_te.append(pred_te)
 
 params_chains = np.stack(params_chains)
-preds_chains = torch.stack(preds_chains)
+preds_chains_val = torch.stack(preds_chains_val)
+preds_chains_te = torch.stack(preds_chains_te) if evaluate_testset else None
 
 
-val_performance = PredictivePerformance(preds_chains, val_dataset.__getdatasets__()[1])
+val_performance = PredictivePerformance(preds_chains_val, val_dataset.__getdatasets__()[1])
 val_performance.calculate_performance()
 
 nll_val, plot_nll_val = val_performance.nll(return_plot=True)
-logs.update({f'NLL: Chain {chain +1}': nll for chain, nll in enumerate(nll_val)})
-wandb.log({'nll_val': plot_nll_val})
+logs.update({f'valNLL: Chain {chain +1}': nll for chain, nll in enumerate(nll_val)})
+logs.update({f'valNLL': np.mean(nll_val)})
 
 auc_val, plot_auc_val = val_performance.auc(return_plot=True)
-logs.update({f'AUC: Chain {chain +1}': auc for chain, auc in enumerate(auc_val)})
-wandb.log({'auc_val': plot_auc_val})
+logs.update({f'valAUC: Chain {chain +1}': auc for chain, auc in enumerate(auc_val)})
+logs.update({f'valAUC': np.mean(auc_val)})
 
 sample_eval = SampleEvaluation(params_chains)
 sample_eval.calculate_autocorrelation()
@@ -132,22 +150,35 @@ logs.update({f'Split-Rhat': sample_eval.split_rhat(burnin=0, rank_normalized=Fal
 logs.update({f'rnSplit-Rhat': sample_eval.split_rhat(burnin=0, rank_normalized=True).mean()}) #Convergence
 logs.update({f'GEW: Chain {chain +1}': gew for chain, gew in enumerate(sample_eval.geweke())}) #Convergence
 logs.update({f'IPS: Chain {chain +1}': ips for chain, ips in enumerate(sample_eval.ips_per_chain(burnin=0))}) #SampleSize
-
+#TODO: Log Acceptance rate, IPS for all chains combined
 
  
 #Shift WANDB in Evaluation file?
 wandb.log({f'Rhat vs Burn-in': sample_eval.rhat_burnin_plot()})
 wandb.log({f'IPS vs Burn-in': sample_eval.ips_burnin_plot()})
 wandb.log({f'Autocorrelation': sample_eval.autocorrelation_plot()})
-wandb.log(logs)
 
-if wandb.config.evaluate_testset:
+
+if evaluate_testset:
     #TODO: save Test set predictions
-    pass
+    te_performance = PredictivePerformance(preds_chains_te, te_dataset.__getdatasets__()[1])
+    te_performance.calculate_performance()
 
-#Log Acceptance rate
+    nll_te = te_performance.nll(return_plot=False)
+    logs.update({f'teNLL: Chain {chain +1}': nll for chain, nll in enumerate(nll_te)})
+    logs.update({f'teNLL': np.mean(nll_te)})
 
-#Define path
+    auc_te = te_performance.auc(return_plot=False)
+    logs.update({f'teAUC: Chain {chain +1}': auc for chain, auc in enumerate(auc_te)})
+    logs.update({f'teAUC': np.mean(auc_te)}) 
+
+    #Save Test Set Predictions
+    res_dir = f'results/HMC/'
+    os.makedirs(res_dir, exist_ok = True)
+    res_path = f'{res_dir}{target_id}_e{step_size}_l{L}_nrs{nr_samples}_nrc{nr_chains}'
+    np.save(res_path , preds_chains_te.cpu().detach().numpy())
+
+#Save Params
 if wandb.config.save_params:
     ckpt_dir = f'logs/HMC/'
     os.makedirs(ckpt_dir, exist_ok = True)
@@ -170,6 +201,6 @@ if wandb.config.save_params:
         lookup[n] = ckp_path
         yaml.dump(lookup, open(ckpt_lookup, 'w'))
 
-    
+wandb.log(logs)    
 
 
