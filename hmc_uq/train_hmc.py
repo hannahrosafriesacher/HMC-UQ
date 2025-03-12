@@ -1,30 +1,19 @@
 import os
 import yaml
-from pathlib import Path
 import argparse
-import sparsechem as sc
-import numpy as np
-import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
-from scipy.stats import pearsonr
-import math
-import random
-from sklearn.metrics import roc_auc_score
 
+import numpy as np
+import sparsechem as sc
 import torch
 import hamiltorch
-import torch.nn as nn
-import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
 from utils.models import MLP
-from utils.evaluation import PredictivePerformance, SampleEvaluation
+from utils.evaluation import HMCPredictivePerformance, HMCSampleEvaluation
 from utils.data import SparseDataset
 import wandb
-sns.set_style('whitegrid')
 
-parser = argparse.ArgumentParser(description='Training a single-task model.')
+parser = argparse.ArgumentParser(description='Running HMC Chains for an MLP.')
 parser.add_argument('--TargetID', type=int, default=None)
 parser.add_argument('--nr_layers', type=int, default=None)
 parser.add_argument('--weight_decay', type=float, default=None)
@@ -133,7 +122,7 @@ preds_chains_val = torch.stack(preds_chains_val)
 preds_chains_te = torch.stack(preds_chains_te) if evaluate_testset else None
 
 
-val_performance = PredictivePerformance(preds_chains_val, val_dataset.__getdatasets__()[1])
+val_performance = HMCPredictivePerformance(preds_chains_val, val_dataset.__getdatasets__()[1])
 val_performance.calculate_performance()
 
 nll_val, plot_nll_val = val_performance.nll(return_plot=True)
@@ -144,7 +133,7 @@ auc_val, plot_auc_val = val_performance.auc(return_plot=True)
 logs.update({f'valAUC: Chain {chain +1}': auc for chain, auc in enumerate(auc_val)})
 logs.update({f'valAUC': np.mean(auc_val)})
 
-sample_eval = SampleEvaluation(params_chains)
+sample_eval = HMCSampleEvaluation(params_chains)
 sample_eval.calculate_autocorrelation()
 logs.update({f'Split-Rhat': sample_eval.split_rhat(burnin=0, rank_normalized=False).mean()})
 logs.update({f'rnSplit-Rhat': sample_eval.split_rhat(burnin=0, rank_normalized=True).mean()}) #Convergence
@@ -161,7 +150,7 @@ wandb.log({f'Autocorrelation': sample_eval.autocorrelation_plot()})
 
 if evaluate_testset:
     #TODO: save Test set predictions
-    te_performance = PredictivePerformance(preds_chains_te, te_dataset.__getdatasets__()[1])
+    te_performance = HMCPredictivePerformance(preds_chains_te, te_dataset.__getdatasets__()[1])
     te_performance.calculate_performance()
 
     nll_te = te_performance.nll(return_plot=False)

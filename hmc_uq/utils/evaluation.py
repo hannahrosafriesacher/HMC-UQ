@@ -9,7 +9,32 @@ from sklearn.metrics import roc_auc_score
 import math
 import random
 
-class PredictivePerformance:
+
+class MLPPredictivePerformance:
+    def __init__(self, preds, labels, epoch, phase) -> None:
+        self.loss = torch.nn.BCELoss()
+        self.preds = F.sigmoid(preds).squeeze(dim = 1)
+        self.labels = labels.squeeze(dim = 1).float()
+        self.epoch = epoch
+        self.phase = phase
+
+    def transform_array(self, array):
+        return np.asarray(array.cpu().detach())
+        
+    def epoch_performance(self):
+        #NLL and AUC performance            
+        nll = self.loss(self.preds, self.labels).detach().item()
+        auc = roc_auc_score(self.transform_array(self.labels), self.transform_array(self.preds))
+
+        log_dict = {'epoch' : self.epoch,
+                    f'{self.phase}/loss/': nll,
+                    f'{self.phase}/auc/': auc}
+        
+        return log_dict
+
+
+
+class HMCPredictivePerformance:
     def __init__(self, preds_chains, labels) -> None:
         self.loss = torch.nn.BCELoss()
         self.preds_chains = F.sigmoid(preds_chains)
@@ -56,7 +81,7 @@ class PredictivePerformance:
         else:
             return df['AUC'].to_list()
 
-class SampleEvaluation:
+class HMCSampleEvaluation:
     def __init__(self, params_chains):
         self.params_chains = params_chains
         self.nr_chains, self.nr_samples,self.nr_params = params_chains.shape
