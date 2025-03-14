@@ -4,7 +4,6 @@
 
 import os
 import yaml
-import argparse
 from tqdm import tqdm
 
 import numpy as np
@@ -13,25 +12,16 @@ import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader
 
+from utils.load_config import get_args
 from utils.models import MLP
 from utils.evaluation import BaselinePredictivePerformance
 from utils.data import SparseDataset
 import wandb
 
-parser = argparse.ArgumentParser(description='Training a single-task model.')
-parser.add_argument('--TargetID', type=int, default=None)
-parser.add_argument('--nr_layers', type=int, default=1)
-parser.add_argument('--weight_decay', type=float, default=None)
-parser.add_argument('--hidden_sizes', type=int, default=None)
-parser.add_argument('--dropout', type=float, default=0)
-parser.add_argument('--learning_rate', type=float, default=None)
-parser.add_argument('--tr_fold', type=list, default=[2,3,4])
-parser.add_argument('--va_fold', type=int, default=1)
-parser.add_argument('--te_fold', type=int, default=0)
-parser.add_argument('--model_loss', type=str, default='BCEwithlogitsloss')
-parser.add_argument('--evaluate_testset', type=bool, default='True')
-parser.add_argument('--save_model', type=bool, default='False')
-args = parser.parse_args()
+args = get_args(config_file = 'configs/models/baseline.yaml')
+print("Loaded Configuration:")
+for key, value in vars(args).items():
+    print(f"{key}: {value}")
 
 if args.evaluate_testset:
     project = 'UQ-HMC_Eval'
@@ -52,7 +42,7 @@ weight_decay = wandb.config.weight_decay
 dropout = wandb.config.dropout
 learning_rate = wandb.config.learning_rate
 model_loss = wandb.config.model_loss
-if model_loss == 'BCEwithlogitsloss':
+if model_loss == 'BCELoss':
     model_loss = torch.nn.BCEWithLogitsLoss()
 else:
     pass
@@ -64,10 +54,14 @@ te_fold=wandb.config.te_fold
 
 evaluate_testset = wandb.config.evaluate_testset
 save_model = wandb.config.save_model
+device = wandb.config.device
 
 
 os.environ['CUDA_VISIBLE_DEVICES']='0'
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+if device == 'gpu' and torch.cuda.is_available():
+    device = 'cuda'
+else:
+    device = 'cpu'
 logs = {}
 
 #load Datasets

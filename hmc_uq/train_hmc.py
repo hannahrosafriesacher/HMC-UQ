@@ -11,29 +11,16 @@ import torch
 import hamiltorch
 from torch.utils.data import DataLoader
 
+from utils.load_config import get_args
 from utils.models import MLP
 from utils.evaluation import HMCPredictivePerformance, HMCSampleEvaluation
 from utils.data import SparseDataset
 import wandb
 
-parser = argparse.ArgumentParser(description='Running HMC Chains for an MLP.')
-parser.add_argument('--TargetID', type=int, default=None)
-parser.add_argument('--nr_layers', type=int, default=None)
-parser.add_argument('--weight_decay', type=float, default=None)
-parser.add_argument('--hidden_sizes', type=int, default=None)
-parser.add_argument('--dropout', type=float, default=0)
-parser.add_argument('--tr_fold', type=list, default=[2,3,4])
-parser.add_argument('--va_fold', type=int, default=1)
-parser.add_argument('--te_fold', type=int, default=0)
-parser.add_argument('--nr_chains', type=int, default=5)
-parser.add_argument('--step_size', type=float, default=1e-3)
-parser.add_argument('--nr_samples', type=int, default=150)
-parser.add_argument('--L', type=int, default=150)
-parser.add_argument('--tau_out', type=float, default=1.)
-parser.add_argument('--model_loss', type=str, default='binary_class_linear_output')
-parser.add_argument('--save_params', type=bool, default='False')
-parser.add_argument('--evaluate_testset', type=bool, default='False')
-args = parser.parse_args()
+args = get_args(config_file = 'configs/models/hmc.yaml')
+print("Loaded Configuration:")
+for key, value in vars(args).items():
+    print(f"{key}: {value}")
 
 if args.evaluate_testset:
     project = 'UQ-HMC_Eval'
@@ -59,17 +46,27 @@ nr_samples = wandb.config.nr_samples
 L = wandb.config.L
 tau_out = wandb.config.tau_out
 model_loss = wandb.config.model_loss
+if model_loss == 'BCELoss':
+    model_loss = 'binary_class_linear_output'
+else:
+    pass
+    #TODO: warning loss not implemented
 
 tr_fold = np.array(wandb.config.tr_fold)
 va_fold=wandb.config.va_fold
 te_fold=wandb.config.te_fold
 
+save_model = wandb.config.save_model
 evaluate_testset = wandb.config.evaluate_testset
+device = wandb.config.device
 
 
 hamiltorch.set_random_seed(123)
 os.environ['CUDA_VISIBLE_DEVICES']='0'
-device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+if device == 'gpu' and torch.cuda.is_available():
+    device = 'cuda'
+else:
+    device = 'cpu'
 logs = {}
 
 #load Datasets
@@ -187,7 +184,7 @@ if evaluate_testset:
     np.save(res_path , preds_chains_te.cpu().detach().numpy())
 
 #Save Params
-if wandb.config.save_params:
+if save_model:
     ckpt_dir = f'logs/HMC/'
     os.makedirs(ckpt_dir, exist_ok = True)
     ckp_path = f'{ckpt_dir}{target_id}_e{step_size}_l{L}_nrs{nr_samples}_nrc{nr_chains}'
