@@ -10,7 +10,7 @@ import math
 import random
 
 
-class MLPPredictivePerformance:
+class BaselinePredictivePerformance:
     def __init__(self, preds, labels, epoch, phase) -> None:
         self.loss = torch.nn.BCELoss()
         self.preds = F.sigmoid(preds).squeeze(dim = 1)

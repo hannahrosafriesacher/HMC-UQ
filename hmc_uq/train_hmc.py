@@ -1,3 +1,6 @@
+#TODO: implement NN with more than 1 layers
+#TODO: same log names like baseline
+
 import os
 import yaml
 import argparse
@@ -93,7 +96,13 @@ wandb.config['dim_input'] = num_input_features
     
 for chain in range(nr_chains):
     #TODO: check if initilization is random
-    net=MLP(hidden_sizes=hidden_sizes, input_features=num_input_features, output_features=1, dropout=dropout)
+    net = MLP(
+        hidden_sizes=hidden_sizes, 
+        input_features=num_input_features, 
+        output_features=1, 
+        dropout=dropout
+        )
+    
     params_init = hamiltorch.util.flatten(net).to(device).clone()
 
     tau = weight_decay
@@ -101,8 +110,18 @@ for chain in range(nr_chains):
     tau_list = [tau]
     tau_list = torch.tensor(tau_list).to(device)
 
-    params_gpu = hamiltorch.sample_model(net, x = train_dataset.__getdatasets__()[0], y = train_dataset.__getdatasets__()[1], params_init=params_init, num_samples=nr_samples,
-                                step_size=step_size, num_steps_per_sample=L,tau_out=tau_out,tau_list=tau_list, model_loss=model_loss)
+    params_gpu = hamiltorch.sample_model(
+        net, 
+        x = train_dataset.__getdatasets__()[0], 
+        y = train_dataset.__getdatasets__()[1], 
+        params_init=params_init, 
+        num_samples=nr_samples,
+        step_size=step_size, 
+        num_steps_per_sample=L,
+        tau_out=tau_out,
+        tau_list=tau_list, 
+        model_loss=model_loss
+        )
 
     params = torch.stack(params_gpu, dim = 0).cpu().numpy()
     params_chains.append(params)
