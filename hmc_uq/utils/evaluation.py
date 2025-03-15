@@ -86,8 +86,8 @@ class HMCSampleEvaluation:
     def __init__(self, params_chains):
         self.params_chains = params_chains
         self.nr_chains, self.nr_samples,self.nr_params = params_chains.shape
-        self.max_burnin = 50 #for plotting Burnin vs Metrics
-        self.burnin_step = 5 #for plotting Burnin vs Metrics
+        self.max_burnin = 50 if self.nr_samples > 50 else self.nr_samples  #for plotting Burnin vs Metrics
+        self.burnin_step = 5 if self.max_burnin > 5 else 1 #for plotting Burnin vs Metrics
         self.AC = {'Burn-in' : [], 'Chain':[], 'LAG' : [], 'AUTOCORR': []}
         self.IPS = {'Burn-in' : [], 'Chain': [], 'IPS':[]}
         self.RHAT = {'Burn-in' : [], 'Split-Rhat':[], 'rnSplit-Rhat':[]}
