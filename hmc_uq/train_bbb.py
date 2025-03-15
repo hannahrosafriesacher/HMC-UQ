@@ -153,17 +153,21 @@ for epoch in tqdm(range(nr_epochs), desc=f'Training {nr_epochs} epochs:'):  # lo
             torch.save(net.state_dict(), ckp_path)
 
             ckpt_lookup = f'configs/ckpt_paths/BBB.yaml'
-            #Save to config file
+            
+            #Save to config file         
             if os.path.exists(ckpt_lookup):
-                lookup = yaml.safe_load(open(ckpt_lookup, 'r'))
-                n = len(lookup.keys())
-                if n == 1 and lookup[0] is None:
-                    n = 0
+                with open(ckpt_lookup, 'r') as file:
+                    try:
+                        lookup = yaml.safe_load(file) or {}  # Load safely, default to empty dict if None
+                    except yaml.YAMLError:
+                        lookup = {}  # If there's a parsing error, start fresh
             else:
                 lookup = {}
-                n = 0
+
+            # Check if the path is already recorded
             if ckp_path not in lookup.values():
-                lookup[f'{target_id}'] = ckp_path
-                yaml.dump(lookup, open(ckpt_lookup, 'w'))
+                lookup[target_id] = ckp_path  
+                with open(ckpt_lookup, 'w') as file:
+                    yaml.dump(lookup, file)
 
 wandb.summary.update(performance_best)

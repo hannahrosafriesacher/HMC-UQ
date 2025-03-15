@@ -108,7 +108,7 @@ for chain in range(nr_chains):
     elif init == 'bbb': #initialize with BBB
         yaml_path = 'configs/ckpt_paths/BBB.yaml'
         with open(yaml_path, "r") as file:
-            paths = yaml.safe_load(file)[f'{target_id}']
+            paths = yaml.safe_load(file)[target_id]
 
         #TODO: implement for more layers
         #TODO: re-implement
@@ -219,18 +219,22 @@ if save_model:
     np.save(ckp_path, params_chains)
 
     ckpt_lookup = f'configs/ckpt_paths/HMC.yaml'
-    #Save to config file
+
+    #Save to config file         
     if os.path.exists(ckpt_lookup):
-        lookup = yaml.safe_load(open(ckpt_lookup, 'r'))
-        n = len(lookup.keys())
-        if n == 1 and lookup[0] is None:
-            n = 0
+        with open(ckpt_lookup, 'r') as file:
+            try:
+                lookup = yaml.safe_load(file) or {}  # Load safely, default to empty dict if None
+            except yaml.YAMLError:
+                lookup = {}  # If there's a parsing error, start fresh
     else:
         lookup = {}
-        n = 0
+
+    # Check if the path is already recorded
     if ckp_path not in lookup.values():
-        lookup[f'{target_id}'] = ckp_path
-        yaml.dump(lookup, open(ckpt_lookup, 'w'))
+        lookup[target_id] = ckp_path  
+        with open(ckpt_lookup, 'w') as file:
+            yaml.dump(lookup, file)
 
 wandb.log(logs)    
 
