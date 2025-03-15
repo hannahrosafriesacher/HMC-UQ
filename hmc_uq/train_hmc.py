@@ -1,5 +1,4 @@
 #TODO: implement NN with more than 1 layers
-#TODO: same log names like baseline
 
 import os
 import yaml
@@ -191,7 +190,6 @@ if evaluate_samples:
 
 
 if evaluate_testset:
-    #TODO: save Test set predictions
     te_performance = HMCPredictivePerformance(preds_chains_te, te_dataset.__getdatasets__()[1])
     te_performance.calculate_performance()
 
