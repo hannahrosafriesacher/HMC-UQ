@@ -173,6 +173,10 @@ logs.update({f'Split-Rhat': sample_eval.split_rhat(burnin=0, rank_normalized=Fal
 logs.update({f'rnSplit-Rhat': sample_eval.split_rhat(burnin=0, rank_normalized=True).mean()}) #Convergence
 logs.update({f'GEW: Chain {chain +1}': gew for chain, gew in enumerate(sample_eval.geweke())}) #Convergence
 logs.update({f'IPS: Chain {chain +1}': ips for chain, ips in enumerate(sample_eval.ips_per_chain(burnin=0))}) #SampleSize
+split_rhat_az, rnsplit_rhat_az = sample_eval.rhat_az()
+logs.update({f'Split-Rhat-AZ': split_rhat_az.mean().item()})
+logs.update({f'rnSplit-Rhat-AZ': rnsplit_rhat_az.mean().item()})
+logs.update({f'IPS-AZ': sample_eval.ess_az().mean().item()})
 #TODO: Log Acceptance rate, IPS for all chains combined
 
  

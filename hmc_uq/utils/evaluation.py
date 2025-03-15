@@ -8,6 +8,7 @@ import torch.nn.functional as F
 from sklearn.metrics import roc_auc_score
 import math
 import random
+import arviz as az
 
 
 class BaselinePredictivePerformance:
@@ -160,11 +161,22 @@ class HMCSampleEvaluation:
         param_rn = norm.ppf(ranks).reshape(nr_chains, nr_samples, -1)
         return param_rn
     
+    def rhat_az(self):
+        ds = az.convert_to_dataset(self.params_chains)
+        split_az = az.rhat(ds, method = 'split').to_dataframe()
+        rank_az = az.rhat(ds, method = 'rank').to_dataframe()
+        return split_az, rank_az
+    
     
     def ess(self):
         #Traditional Effective Sample Size
 
         return len(self.params_chains)/(1 + 2*self.AC['AUTOCORR'].sum())
+    
+    def ess_az(self):
+        ds = az.convert_to_dataset(self.params_chains)
+        ess_az = az.ess(ds).to_dataframe()
+        return ess_az
     
 
     def ips_per_chain(self, burnin):
