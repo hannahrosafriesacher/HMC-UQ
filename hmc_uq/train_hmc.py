@@ -10,6 +10,7 @@ import sparsechem as sc
 import torch
 import hamiltorch
 from torch.utils.data import DataLoader
+from collections import OrderedDict
 
 from utils.load_config import get_args
 from utils.models import MLP
@@ -56,6 +57,7 @@ tr_fold = np.array(wandb.config.tr_fold)
 va_fold=wandb.config.va_fold
 te_fold=wandb.config.te_fold
 
+init = wandb.config.init
 save_model = wandb.config.save_model
 evaluate_testset = wandb.config.evaluate_testset
 device = wandb.config.device
@@ -99,8 +101,24 @@ for chain in range(nr_chains):
         output_features=1, 
         dropout=dropout
         )
-    
-    params_init = hamiltorch.util.flatten(net).to(device).clone()
+    if init == 'random':
+        params_init = hamiltorch.util.flatten(net).to(device).clone()
+
+    elif init == 'bbb': #initialize with BBB
+        yaml_path = 'configs/ckpt_paths/BBB.yaml'
+        with open(yaml_path, "r") as file:
+            paths = yaml.safe_load(file)[f'{target_id}']
+
+        #TODO: implement for more layers
+        #TODO: re-implement
+        params_surrogate = torch.load(paths)
+        params = OrderedDict()
+        params['input.weight'] = params_surrogate[f'nr_layers.0.W_mu'].T + params_surrogate[f'nr_layers.0.W_rho'].T * torch.rand_like(params_surrogate[f'nr_layers.0.W_rho'].T)
+        params['input.bias'] = params_surrogate['nr_layers.0.b_mu'] + params_surrogate['nr_layers.0.b_rho'] * torch.rand_like(params_surrogate[f'nr_layers.0.b_rho'])
+        params['output.weight'] = params_surrogate['nr_layers.1.W_mu'].T + params_surrogate['nr_layers.1.W_rho'].T * torch.rand_like(params_surrogate[f'nr_layers.1.W_rho'].T)
+        params['output.bias'] = params_surrogate['nr_layers.1.b_mu'] + params_surrogate['nr_layers.1.b_rho'] * torch.rand_like(params_surrogate[f'nr_layers.1.b_rho'])
+        net.load_state_dict(params)
+        params_init = hamiltorch.util.flatten(net).to(device).clone()
 
     tau = weight_decay
     #TODO: check code what happens if I specify only 1 tau?
@@ -203,9 +221,8 @@ if save_model:
         lookup = {}
         n = 0
     if ckp_path not in lookup.values():
-        lookup[n] = ckp_path
+        lookup[f'{target_id}'] = ckp_path
         yaml.dump(lookup, open(ckpt_lookup, 'w'))
 
 wandb.log(logs)    
-
 

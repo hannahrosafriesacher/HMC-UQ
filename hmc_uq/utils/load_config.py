@@ -38,6 +38,7 @@ def get_args(config_file = '/configs/models/baseline.yaml', config_name = 'CYP')
     parser.add_argument("--nr_samples", type=int)
     parser.add_argument("--L", type=int)
     parser.add_argument("--tau_out", type=float, default=1)
+    parser.add_argument("--init", type=str, default='random')
 
     parser.add_argument("--save_model", type=bool)
     parser.add_argument("--evaluate_testset", type=bool)

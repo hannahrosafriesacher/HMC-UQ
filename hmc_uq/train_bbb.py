@@ -163,7 +163,7 @@ for epoch in tqdm(range(nr_epochs), desc=f'Training {nr_epochs} epochs:'):  # lo
                 lookup = {}
                 n = 0
             if ckp_path not in lookup.values():
-                lookup[n] = ckp_path
+                lookup[f'{target_id}'] = ckp_path
                 yaml.dump(lookup, open(ckpt_lookup, 'w'))
 
 wandb.summary.update(performance_best)

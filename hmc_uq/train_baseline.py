@@ -152,7 +152,7 @@ for epoch in tqdm(range(nr_epochs), desc=f'Training {nr_epochs} epochs:'):  # lo
             if os.path.exists(ckpt_lookup):
                 lookup = yaml.safe_load(open(ckpt_lookup, 'r'))
                 n = len(lookup.keys())
-                if n == 1 and lookup[0] is None:
+                if n == 1 and lookup[f'{target_id}'] is None:
                     n = 0
             else:
                 lookup = {}

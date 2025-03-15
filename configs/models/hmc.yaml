@@ -32,7 +32,7 @@ CYP:
   weight_decay: 0.01
   hidden_sizes: 30
   dropout: 0
-  nr_chains: 5
+  nr_chains: 2
   step_size: 0.001
   nr_samples: 150
   L: 150
