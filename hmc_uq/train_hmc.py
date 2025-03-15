@@ -139,7 +139,7 @@ for chain in range(nr_chains):
         model_loss=model_loss,
         debug = 2
         )
-    logs.update({f'AR: Chain {chain + 1}': accept_rate})
+    logs.update({f'ar/chain{chain + 1}': accept_rate})
 
     params = torch.stack(params_gpu, dim = 0).cpu().numpy()
     params_chains.append(params)
@@ -163,24 +163,24 @@ val_performance = HMCPredictivePerformance(preds_chains_val, val_dataset.__getda
 val_performance.calculate_performance()
 
 nll_val, plot_nll_val = val_performance.nll(return_plot=True)
-logs.update({f'valNLL: Chain {chain +1}': nll for chain, nll in enumerate(nll_val)})
-logs.update({f'valNLL': np.mean(nll_val)})
+logs.update({f'/val/loss/chain{chain +1}': nll for chain, nll in enumerate(nll_val)})
+logs.update({f'/val/loss/average': np.mean(nll_val)})
 
 auc_val, plot_auc_val = val_performance.auc(return_plot=True)
-logs.update({f'valAUC: Chain {chain +1}': auc for chain, auc in enumerate(auc_val)})
-logs.update({f'valAUC': np.mean(auc_val)})
+logs.update({f'/val/auc/chain{chain +1}': auc for chain, auc in enumerate(auc_val)})
+logs.update({f'/val/auc/average': np.mean(auc_val)})
 
 if evaluate_samples:
     sample_eval = HMCSampleEvaluation(params_chains)
     sample_eval.calculate_autocorrelation()
-    logs.update({f'Split-Rhat': sample_eval.split_rhat(burnin=0, rank_normalized=False).mean()})
-    logs.update({f'rnSplit-Rhat': sample_eval.split_rhat(burnin=0, rank_normalized=True).mean()}) #Convergence
-    logs.update({f'GEW: Chain {chain +1}': gew for chain, gew in enumerate(sample_eval.geweke())}) #Convergence
-    logs.update({f'IPS: Chain {chain +1}': ips for chain, ips in enumerate(sample_eval.ips_per_chain(burnin=0))}) #SampleSize
+    logs.update({f'SplitRhat': sample_eval.split_rhat(burnin=0, rank_normalized=False).mean()})
+    logs.update({f'rnSplitRhat': sample_eval.split_rhat(burnin=0, rank_normalized=True).mean()}) #Convergence
+    logs.update({f'GEW/chain{chain +1}': gew for chain, gew in enumerate(sample_eval.geweke())}) #Convergence
+    logs.update({f'IPS/chain{chain +1}': ips for chain, ips in enumerate(sample_eval.ips_per_chain(burnin=0))}) #SampleSize
     split_rhat_az, rnsplit_rhat_az = sample_eval.rhat_az()
-    logs.update({f'Split-Rhat-AZ': split_rhat_az.mean().item()})
-    logs.update({f'rnSplit-Rhat-AZ': rnsplit_rhat_az.mean().item()})
-    logs.update({f'IPS-AZ': sample_eval.ess_az().mean().item()})
+    logs.update({f'SplitRhat/AZ': split_rhat_az.mean().item()})
+    logs.update({f'rnSplitRhat/AZ': rnsplit_rhat_az.mean().item()})
+    logs.update({f'IPS/AZ': sample_eval.ess_az().mean().item()})
     #TODO: Log Acceptance rate, IPS for all chains combined
 
  
@@ -196,12 +196,12 @@ if evaluate_testset:
     te_performance.calculate_performance()
 
     nll_te = te_performance.nll(return_plot=False)
-    logs.update({f'teNLL: Chain {chain +1}': nll for chain, nll in enumerate(nll_te)})
-    logs.update({f'teNLL': np.mean(nll_te)})
+    logs.update({f'/test/loss/chain{chain +1}': nll for chain, nll in enumerate(nll_te)})
+    logs.update({f'/test/loss/average': np.mean(nll_te)})
 
     auc_te = te_performance.auc(return_plot=False)
-    logs.update({f'teAUC: Chain {chain +1}': auc for chain, auc in enumerate(auc_te)})
-    logs.update({f'teAUC': np.mean(auc_te)}) 
+    logs.update({f'/test/auc/chain{chain +1}': auc for chain, auc in enumerate(auc_te)})
+    logs.update({f'/test/auc/average': np.mean(auc_te)}) 
 
     #Save Test Set Predictions
     res_dir = f'results/HMC/'
