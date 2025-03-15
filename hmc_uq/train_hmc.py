@@ -125,7 +125,7 @@ for chain in range(nr_chains):
     tau_list = [tau]
     tau_list = torch.tensor(tau_list).to(device)
 
-    params_gpu = hamiltorch.sample_model(
+    params_gpu, accept_rate = hamiltorch.sample_model(
         net, 
         x = train_dataset.__getdatasets__()[0], 
         y = train_dataset.__getdatasets__()[1], 
@@ -135,8 +135,10 @@ for chain in range(nr_chains):
         num_steps_per_sample=L,
         tau_out=tau_out,
         tau_list=tau_list, 
-        model_loss=model_loss
+        model_loss=model_loss,
+        debug = 2
         )
+    logs.update({f'AR: Chain {chain + 1}': accept_rate})
 
     params = torch.stack(params_gpu, dim = 0).cpu().numpy()
     params_chains.append(params)
