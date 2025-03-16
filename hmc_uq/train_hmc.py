@@ -5,7 +5,6 @@ import yaml
 import argparse
 
 import numpy as np
-import sparsechem as sc
 import torch
 import hamiltorch
 from torch.utils.data import DataLoader
@@ -72,8 +71,8 @@ else:
 logs = {}
 
 #load Datasets
-X_singleTask=sc.load_sparse('data/chembl_29/chembl_29_X.npy')
-Y_singleTask=sc.load_sparse('data/chembl_29/chembl_29_thresh.npy')[:,target_id]
+X_singleTask = np.load('data/chembl_29/chembl_29_X.npy', allow_pickle=True).item().tocsr()
+Y_singleTask = np.load('data/chembl_29/chembl_29_thresh.npy', allow_pickle=True).item().tocsr()[:,target_id]
 folding=np.load('data/chembl_29/folding.npy')
 
 train_dataset = SparseDataset(X_singleTask, Y_singleTask, folding, tr_fold, device)
