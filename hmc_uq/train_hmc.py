@@ -16,6 +16,8 @@ from utils.evaluation import HMCPredictivePerformance, HMCSampleEvaluation
 from utils.data import SparseDataset
 import wandb
 
+import cProfile
+
 args = get_args(config_file = 'configs/models/hmc.yaml')
 print("Loaded Configuration:")
 for key, value in vars(args).items():
@@ -174,7 +176,8 @@ if evaluate_samples:
     logs.update({f'SplitRhat': sample_eval.split_rhat(burnin=0, rank_normalized=False).mean()})
     logs.update({f'rnSplitRhat': sample_eval.split_rhat(burnin=0, rank_normalized=True).mean()}) #Convergence
     logs.update({f'GEW/chain{chain +1}': gew for chain, gew in enumerate(sample_eval.geweke())}) #Convergence
-    logs.update({f'IPS/chain{chain +1}': ips for chain, ips in enumerate(sample_eval.ips_per_chain(burnin=0))}) #SampleSize
+    logs.update({f'IPS/chain{chain +1}': ips for chain, ips in enumerate(sample_eval.ips_per_chain(burnin=False))}) #SampleSize
+    logs.update({f'IPS-burnin/chain{chain +1}': ips for chain, ips in enumerate(sample_eval.ips_per_chain(burnin=True))})
     split_rhat_az, rnsplit_rhat_az = sample_eval.rhat_az()
     logs.update({f'SplitRhat/AZ': split_rhat_az.mean().item()})
     logs.update({f'rnSplitRhat/AZ': rnsplit_rhat_az.mean().item()})
@@ -184,7 +187,6 @@ if evaluate_samples:
  
     #Shift WANDB in Evaluation file?
     wandb.log({f'Rhat vs Burn-in': sample_eval.rhat_burnin_plot()})
-    wandb.log({f'IPS vs Burn-in': sample_eval.ips_burnin_plot()})
     wandb.log({f'Autocorrelation': sample_eval.autocorrelation_plot()})
 
 

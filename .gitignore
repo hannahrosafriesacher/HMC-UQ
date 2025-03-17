@@ -15,4 +15,7 @@
 **/logs/*
 **/configs/ckpt_paths/*
 
+#ignore profiling
+**/profile/
+
 

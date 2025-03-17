@@ -88,21 +88,23 @@ class HMCSampleEvaluation:
         self.nr_chains, self.nr_samples,self.nr_params = params_chains.shape
         self.max_burnin = 50 if self.nr_samples > 50 else self.nr_samples  #for plotting Burnin vs Metrics
         self.burnin_step = 5 if self.max_burnin > 5 else 1 #for plotting Burnin vs Metrics
-        self.AC = {'Burn-in' : [], 'Chain':[], 'LAG' : [], 'AUTOCORR': []}
-        self.IPS = {'Burn-in' : [], 'Chain': [], 'IPS':[]}
-        self.RHAT = {'Burn-in' : [], 'Split-Rhat':[], 'rnSplit-Rhat':[]}
+        self.AC = {'Burn-in' : [], 'Chain':[], 'LAG' : [],'#Burn-in': [], 'AUTOCORR': []}
+        self.IPS = {'#Burn-in' : [], 'Chain': [], 'IPS':[]}
+        self.RHAT = {'#Burn-in' : [], 'Split-Rhat':[], 'rnSplit-Rhat':[]}
 
     def calculate_autocorrelation(self):
-        for burnin in range(0, int(self.max_burnin), self.burnin_step):
+        for nrbisamples in [0, int(self.max_burnin)]:
             for chain in range(self.nr_chains):
-                params_chain = self.params_chains[chain][burnin:]
-                nr_samples = self.nr_samples - burnin
-                max_lag = math.floor((self.nr_samples - burnin)/2)
+                burnin = False if nrbisamples ==0 else True 
+                params_chain = self.params_chains[chain][nrbisamples:]
+                nr_samples = self.nr_samples - nrbisamples
+                max_lag = math.floor((self.nr_samples - nrbisamples)/2) if nr_samples <+ 200 else 100
                 for lag in range(0, max_lag):
                     ac = np.mean(pearsonr(params_chain[lag:], params_chain[:(nr_samples-lag)], axis = 0)[0])
                     self.AC['Chain'].append(chain)
                     self.AC['LAG'].append(lag)
                     self.AC['AUTOCORR'].append(ac)
+                    self.AC['#Burn-in'].append(nrbisamples)
                     self.AC['Burn-in'].append(burnin)
         self.AC = pd.DataFrame(self.AC)
 
@@ -182,7 +184,7 @@ class HMCSampleEvaluation:
     def ips_per_chain(self, burnin):
         #Initial Positive Sequence Estimation
         ips_chains = []
-        df_burnin = self.AC[self.AC['Burn-in'] == burnin]
+        df_burnin = self.AC[self.AC['#Burn-in'] == burnin]
         for chain in range(self.nr_chains):
             autocorr = 0
             max_lag = math.floor((self.nr_samples - burnin)/2)
@@ -205,18 +207,20 @@ class HMCSampleEvaluation:
     
     #TODO: IPS Total
 
-      
+    
     def rhat_burnin_plot(self):
         plt.cla()
         for burnin in range(0, self.max_burnin, self.burnin_step):
             
-            self.RHAT['Burn-in'].extend([burnin] * self.nr_params)
+            self.RHAT['#Burn-in'].extend([burnin] * self.nr_params)
             self.RHAT['Split-Rhat'].extend(self.split_rhat(burnin, rank_normalized=False).flatten().tolist())
             self.RHAT['rnSplit-Rhat'].extend(self.split_rhat(burnin, rank_normalized=True).flatten().tolist())
-        rhat_burnin = sns.lineplot(data = self.RHAT, x= 'Burn-in', y = 'Split-Rhat')
-        rhat_burnin = sns.lineplot(data = self.RHAT, x= 'Burn-in', y = 'rnSplit-Rhat')
+        rhat_burnin = sns.lineplot(data = self.RHAT, x= '#Burn-in', y = 'Split-Rhat')
+        rhat_burnin = sns.lineplot(data = self.RHAT, x= '#Burn-in', y = 'rnSplit-Rhat')
         return rhat_burnin
     
+    
+    '''
     def ips_burnin_plot(self):
         plt.cla()
         for burnin in range(0, self.max_burnin, self.burnin_step):
@@ -225,12 +229,12 @@ class HMCSampleEvaluation:
                 self.IPS['IPS'].append(self.ips_per_chain(burnin)[chain])
                 self.IPS['Chain'] = chain
         ips_burnin = sns.lineplot(data = self.IPS, x= 'Burn-in', y = 'IPS', hue = 'Chain')
-        return ips_burnin
+        return ips_burnin'''
     
     #def autocorrelation_plot:
     def autocorrelation_plot(self):
         plt.cla() 
-        df = self.AC[self.AC['Burn-in'] == 0]
+        df = self.AC[self.AC['#Burn-in'] == 0]
         autocorr_plot = sns.lineplot(data = df, x = 'LAG', y = 'AUTOCORR', hue = 'Chain')
         return autocorr_plot
 

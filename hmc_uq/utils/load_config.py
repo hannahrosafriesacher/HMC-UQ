@@ -42,7 +42,7 @@ def get_args(config_file = '/configs/models/baseline.yaml', config_name = 'CYP')
 
     parser.add_argument("--save_model", type=bool)
     parser.add_argument("--evaluate_testset", type=bool)
-    parser.add_argument("--evaluate_samples", type=bool, default = False)
+    parser.add_argument("--evaluate_samples", type=bool, default = True)
     parser.add_argument("--device", type=str, default='gpu')
 
     config = load_config(config_file, config_name)
