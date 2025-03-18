@@ -16,7 +16,7 @@ from utils.evaluation import HMCPredictivePerformance, HMCSampleEvaluation
 from utils.data import SparseDataset
 import wandb
 
-import cProfile
+from timeit import default_timer as timer
 
 args = get_args(config_file = 'configs/models/hmc.yaml')
 print("Loaded Configuration:")
@@ -124,7 +124,7 @@ for chain in range(nr_chains):
     #TODO: check code what happens if I specify only 1 tau?
     tau_list = [tau]
     tau_list = torch.tensor(tau_list).to(device)
-
+    start = timer()
     params_gpu, accept_rate = hamiltorch.sample_model(
         net, 
         x = train_dataset.__getdatasets__()[0], 
@@ -138,6 +138,8 @@ for chain in range(nr_chains):
         model_loss=model_loss,
         debug = 2
         )
+    end = timer()
+    print('HMC Sampler', end - start)
     logs.update({f'ar/chain{chain + 1}': accept_rate})
 
     params = torch.stack(params_gpu, dim = 0).cpu().numpy()
@@ -171,25 +173,60 @@ logs.update({f'/val/auc/average': np.mean(auc_val)})
 
 if evaluate_samples:
     sample_eval = HMCSampleEvaluation(params_chains)
-    sample_eval.calculate_autocorrelation()
+
+    start = timer()
+    ac = sample_eval.calculate_autocorrelation()
+    end = timer()
+    print('AUTOCORR', end - start)
+
+    start = timer()
     logs.update({f'SplitRhat': sample_eval.split_rhat(burnin=0, rank_normalized=False).mean()})
+    end = timer()
+    print('SplitRhat', end - start)
+
+    start = timer()
     logs.update({f'rnSplitRhat': sample_eval.split_rhat(burnin=0, rank_normalized=True).mean()}) #Convergence
+    end = timer()
+    print('rnSplitRhat', end - start)
+
+    start = timer()
     logs.update({f'GEW/chain{chain +1}': gew for chain, gew in enumerate(sample_eval.geweke())}) #Convergence
+    end = timer()
+    print('AGEW', end - start)
+
+    start = timer()
     logs.update({f'IPS/chain{chain +1}': ips for chain, ips in enumerate(sample_eval.ips_per_chain(burnin=False))}) #SampleSize
+    end = timer()
+    print('IPS', end - start)
+
+    start = timer()
     logs.update({f'IPS-burnin/chain{chain +1}': ips for chain, ips in enumerate(sample_eval.ips_per_chain(burnin=True))})
+    end = timer()
+    print('IPS-burnin', end - start)
+
+    start = timer()
     split_rhat_az, rnsplit_rhat_az = sample_eval.rhat_az()
     logs.update({f'SplitRhat/AZ': split_rhat_az.mean().item()})
-    logs.update({f'rnSplitRhat/AZ': rnsplit_rhat_az.mean().item()})
+    #logs.update({f'rnSplitRhat/AZ': rnsplit_rhat_az.mean().item()})
+    end = timer()
+    print('SplitRhat/AZ', end - start)
+
+    start = timer()
     logs.update({f'IPS/AZ': sample_eval.ess_az().mean().item()})
+    end = timer()
+    print('IPS/AZ', end - start)
     #TODO: Log Acceptance rate, IPS for all chains combined
 
- 
+    start = timer()
     #Shift WANDB in Evaluation file?
     wandb.log({f'Rhat vs Burn-in': sample_eval.rhat_burnin_plot()})
+    wandb.log({f'IPS vs Burn-in': sample_eval.ips_burnin_plot()})
     wandb.log({f'Autocorrelation': sample_eval.autocorrelation_plot()})
     trace_plots = sample_eval.trace_plot(net.state_dict())
     for plot in trace_plots:
         wandb.log({f'{plot}': trace_plots[plot]})
+    end = timer()
+    print('Plots', end - start)
 
 
 if evaluate_testset:
@@ -238,4 +275,5 @@ if save_model:
             yaml.dump(lookup, file)
 
 wandb.log(logs)    
+
 

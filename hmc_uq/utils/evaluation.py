@@ -3,6 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy.stats import pearsonr, rankdata, norm
+from scipy.signal import correlate
 import torch
 import torch.nn.functional as F
 from sklearn.metrics import roc_auc_score
@@ -92,20 +93,40 @@ class HMCSampleEvaluation:
         self.IPS = {'#Burn-in' : [], 'Chain': [], 'IPS':[]}
         self.RHAT = {'#Burn-in' : [], 'Split-Rhat':[], 'rnSplit-Rhat':[]}
 
+    
+    def autocorrelation_singleparam(self, params_chain):
+        #to get normalized correlation
+            params_chain_a = (params_chain- np.mean(params_chain)) / (np.std(params_chain) * len(params_chain))
+            params_chain_b = (params_chain - np.mean(params_chain)) / np.std(params_chain)
+            ac_param = correlate(params_chain_a, params_chain_b)
+            half_idx = len(ac_param)//2
+            ac_param = ac_param[half_idx:(half_idx + self.max_lag)]
+            return ac_param
+
     def calculate_autocorrelation(self):
         for nrbisamples in [0, int(self.max_burnin), 10]: #TODO
             for chain in range(self.nr_chains):
                 burnin = False if nrbisamples ==0 else True 
                 params_chain = self.params_chains[chain][nrbisamples:]
-                nr_samples = self.nr_samples - nrbisamples
-                max_lag = math.floor((self.nr_samples - nrbisamples)/2) if nr_samples <+ 200 else 100
-                for lag in range(0, max_lag):
-                    ac = np.mean(pearsonr(params_chain[lag:], params_chain[:(nr_samples-lag)], axis = 0)[0])
-                    self.AC['Chain'].append(chain)
-                    self.AC['LAG'].append(lag)
-                    self.AC['AUTOCORR'].append(ac)
-                    self.AC['#Burn-in'].append(nrbisamples)
-                    self.AC['Burn-in'].append(burnin)
+                nr_samples_bi = self.nr_samples - nrbisamples
+                self.max_lag = nr_samples_bi//2 if nr_samples_bi <= 400 else 200
+
+                ac = np.apply_along_axis(self.autocorrelation_singleparam, arr = params_chain, axis = 0)
+                ac_mean = np.mean(ac, axis = 1)
+                            
+                self.AC['Chain'].extend([chain] * self.max_lag)
+                self.AC['LAG'].extend(range(self.max_lag))
+                self.AC['AUTOCORR'].extend(ac_mean)
+                self.AC['#Burn-in'].extend([nrbisamples] * self.max_lag)
+                self.AC['Burn-in'].extend([burnin] * self.max_lag)
+
+                #for lag in range(0, max_lag):
+                #    ac = np.mean(pearsonr(params_chain[lag:], params_chain[:(nr_samples-lag)], axis = 0)[0])
+                #    self.AC['Chain'].append(chain)
+                #    self.AC['LAG'].append(lag)
+                #    self.AC['AUTOCORR'].append(ac)
+                #    self.AC['#Burn-in'].append(nrbisamples)
+                #    self.AC['Burn-in'].append(burnin)
         self.AC = pd.DataFrame(self.AC)
 
     
@@ -186,7 +207,7 @@ class HMCSampleEvaluation:
         df_burnin = self.AC[self.AC['#Burn-in'] == burnin]
         for chain in range(self.nr_chains):
             autocorr = 0
-            max_lag = math.floor((self.nr_samples - burnin)/2)
+            max_lag = (self.nr_samples - burnin)//2
             df_chain = df_burnin[df_burnin['Chain'] == chain]
             for lag in range(0, max_lag, 2):
                 ips = 1
@@ -219,16 +240,16 @@ class HMCSampleEvaluation:
         return rhat_burnin
     
     
-    '''
+    
     def ips_burnin_plot(self):
         plt.cla()
         for burnin in range(0, self.max_burnin, self.burnin_step):
             for chain in range(self.nr_chains):
-                self.IPS['Burn-in'].append(burnin)
+                self.IPS['#Burn-in'].append(burnin)
                 self.IPS['IPS'].append(self.ips_per_chain(burnin)[chain])
                 self.IPS['Chain'] = chain
-        ips_burnin = sns.lineplot(data = self.IPS, x= 'Burn-in', y = 'IPS', hue = 'Chain')
-        return ips_burnin'''
+        ips_burnin = sns.lineplot(data = self.IPS, x= '#Burn-in', y = 'IPS', hue = 'Chain')
+        return ips_burnin
     
     #def autocorrelation_plot:
     def autocorrelation_plot(self):
