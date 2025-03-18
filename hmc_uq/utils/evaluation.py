@@ -93,7 +93,7 @@ class HMCSampleEvaluation:
         self.RHAT = {'#Burn-in' : [], 'Split-Rhat':[], 'rnSplit-Rhat':[]}
 
     def calculate_autocorrelation(self):
-        for nrbisamples in [0, int(self.max_burnin)]:
+        for nrbisamples in [0, int(self.max_burnin), 10]: #TODO
             for chain in range(self.nr_chains):
                 burnin = False if nrbisamples ==0 else True 
                 params_chain = self.params_chains[chain][nrbisamples:]
@@ -155,7 +155,6 @@ class HMCSampleEvaluation:
     
     def rank_normalize(self, params_burnin_split, nr_total_samples, nr_chains, nr_samples):
         #Rank-Normalized Split Rhat (Vehtari et al (2021)
-        #file:///home/rosa/Downloads/20-BA1221.pdf
 
         params_burnin_split = params_burnin_split.reshape(nr_total_samples, -1)
         ranks = rankdata(params_burnin_split, axis = 0)
@@ -239,13 +238,45 @@ class HMCSampleEvaluation:
         return autocorr_plot
 
 
-    def trace_plot(self, nr_plotted_params):
-        rd_ind = random.sample(range(0, len(self.params)), nr_plotted_params)
-        params_selected = self.params[:, rd_ind]
-        params_selected = pd.DataFrame(params_selected)
+    def trace_plot(self, net_dict):
+        # get number of params in every layer
+        nr_plotsamples = 100
+        nr_plotparams = int(round(50/self.nr_chains))
+        count = [0]
+        layer_names = []
+        figures = {}
+        for layer in net_dict:
+            count.append(net_dict[layer].numel())
+            layer_names.append(layer)
+        
+        for ind, name in enumerate(layer_names):        
+            params_layer = self.params_chains[:,:, count[ind]:count[ind+1]]
+            nr_params_layer = params_layer.shape[1]
+            #choose 50 params randomly if >50 params in that layer
+            if nr_params_layer > nr_plotparams:
+                rand_ind = random.sample(range(nr_params_layer), nr_plotparams)
+                params_layer = self.params_chains[:,:, rand_ind]
+                nr_params_layer = nr_plotparams
+            
+            
+            params_filtered = pd.DataFrame({})
+            for chain in range(self.nr_chains):
+                params_layer_chain = pd.DataFrame(params_layer[chain], columns = [f'Param{i}' for i in range(nr_params_layer)])
+                params_layer_chain = params_layer_chain.iloc[:nr_plotsamples]
+                params_layer_chain['Sample'] = range (len(params_layer_chain))
 
-        for i in range(nr_plotted_params):
-            return sns.lineplot(data = params_selected.reset_index(), x = 'index', y = i)
+                params_layer_chain_long = params_layer_chain.melt(id_vars = 'Sample', var_name = 'Param', value_name = 'Value')
+                params_layer_chain_long['Chain'] = chain + 1
+                params_filtered = pd.concat((params_filtered, params_layer_chain_long))
+
+            fig, axs = plt.subplots()
+            sns.lineplot(data = params_filtered, x = 'Sample', y = 'Value', hue = 'Param', style = 'Chain', legend = False)
+            figures[f'Trace plot: {name}'] = fig
+
+            #figures[f'Trace plot: {name}'].savefig(f'/home/rosa/git/HMC-UQ/results/figures/{name}.png')
+            
+
+        return figures
 
 #TODO: Monte Carlo Standard Error?, plot Convergence, ESS for every layer/bias
 

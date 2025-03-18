@@ -95,7 +95,6 @@ num_input_features = train_dataset.__getinputdim__()
 wandb.config['dim_input'] = num_input_features
     
 for chain in range(nr_chains):
-    #TODO: check if initilization is random
     net = MLP(
         hidden_sizes=hidden_sizes, 
         input_features=num_input_features, 
@@ -188,6 +187,9 @@ if evaluate_samples:
     #Shift WANDB in Evaluation file?
     wandb.log({f'Rhat vs Burn-in': sample_eval.rhat_burnin_plot()})
     wandb.log({f'Autocorrelation': sample_eval.autocorrelation_plot()})
+    trace_plots = sample_eval.trace_plot(net.state_dict())
+    for plot in trace_plots:
+        wandb.log({f'{plot}': trace_plots[plot]})
 
 
 if evaluate_testset:
