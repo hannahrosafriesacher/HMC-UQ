@@ -120,13 +120,6 @@ class HMCSampleEvaluation:
                 self.AC['#Burn-in'].extend([nrbisamples] * self.max_lag)
                 self.AC['Burn-in'].extend([burnin] * self.max_lag)
 
-                #for lag in range(0, max_lag):
-                #    ac = np.mean(pearsonr(params_chain[lag:], params_chain[:(nr_samples-lag)], axis = 0)[0])
-                #    self.AC['Chain'].append(chain)
-                #    self.AC['LAG'].append(lag)
-                #    self.AC['AUTOCORR'].append(ac)
-                #    self.AC['#Burn-in'].append(nrbisamples)
-                #    self.AC['Burn-in'].append(burnin)
         self.AC = pd.DataFrame(self.AC)
 
     
@@ -135,11 +128,12 @@ class HMCSampleEvaluation:
         gewekes = []
         for chain in range(self.nr_chains):
             params_chain = self.params_chains[chain]
-            s_index = round(len(params_chain) * 0.5) 
-            s1 = params_chain[:s_index]
-            s2 = params_chain[-s_index:]
+            s1_index = round(len(params_chain) * 0.5) 
+            s2_index = round(len(params_chain) * 0.1) 
+            s1 = params_chain[:s1_index]
+            s2 = params_chain[-s2_index:]
             means = np.mean(s1, axis = 0) - np.mean(s2, axis = 0) 
-            errors = np.var(s1, axis = 0)/s_index + np.var(s2, axis = 0)/s_index
+            errors = np.var(s1, axis = 0)/s1_index + np.var(s2, axis = 0)/s2_index
             gewekes.append(np.mean(means/np.sqrt(errors)))
 
         return gewekes
@@ -148,8 +142,7 @@ class HMCSampleEvaluation:
 
     def split_rhat(self, burnin, rank_normalized = False):
         #Gelman Rubin/ Potenitial Scale Reduction Factor (Split Rhat)
-        #https://jbds.isdsa.org/public/journals/1/html/v2n2/p3/
-        #file:///home/rosa/Downloads/20-BA1221.pdf      
+        #https://jbds.isdsa.org/public/journals/1/html/v2n2/p3/     
 
         params_burnin = self.params_chains[:,burnin:]
         nr_samples = self.nr_samples - burnin
@@ -293,8 +286,6 @@ class HMCSampleEvaluation:
             fig, axs = plt.subplots()
             sns.lineplot(data = params_filtered, x = 'Sample', y = 'Value', hue = 'Param', style = 'Chain', legend = False)
             figures[f'Trace plot: {name}'] = fig
-
-            #figures[f'Trace plot: {name}'].savefig(f'/home/rosa/git/HMC-UQ/results/figures/{name}.png')
             
 
         return figures

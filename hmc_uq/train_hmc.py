@@ -171,53 +171,24 @@ auc_val, plot_auc_val = val_performance.auc(return_plot=True)
 logs.update({f'/val/auc/chain{chain +1}': auc for chain, auc in enumerate(auc_val)})
 logs.update({f'/val/auc/average': np.mean(auc_val)})
 
+start = timer()
 if evaluate_samples:
     sample_eval = HMCSampleEvaluation(params_chains)
 
-    start = timer()
     ac = sample_eval.calculate_autocorrelation()
-    end = timer()
-    print('AUTOCORR', end - start)
-
-    start = timer()
+    
     logs.update({f'SplitRhat': sample_eval.split_rhat(burnin=0, rank_normalized=False).mean()})
-    end = timer()
-    print('SplitRhat', end - start)
-
-    start = timer()
     logs.update({f'rnSplitRhat': sample_eval.split_rhat(burnin=0, rank_normalized=True).mean()}) #Convergence
-    end = timer()
-    print('rnSplitRhat', end - start)
-
-    start = timer()
     logs.update({f'GEW/chain{chain +1}': gew for chain, gew in enumerate(sample_eval.geweke())}) #Convergence
-    end = timer()
-    print('AGEW', end - start)
-
-    start = timer()
     logs.update({f'IPS/chain{chain +1}': ips for chain, ips in enumerate(sample_eval.ips_per_chain(burnin=False))}) #SampleSize
-    end = timer()
-    print('IPS', end - start)
-
-    start = timer()
     logs.update({f'IPS-burnin/chain{chain +1}': ips for chain, ips in enumerate(sample_eval.ips_per_chain(burnin=True))})
-    end = timer()
-    print('IPS-burnin', end - start)
 
-    start = timer()
-    split_rhat_az, rnsplit_rhat_az = sample_eval.rhat_az()
-    logs.update({f'SplitRhat/AZ': split_rhat_az.mean().item()})
+    #split_rhat_az, rnsplit_rhat_az = sample_eval.rhat_az()
+    #logs.update({f'SplitRhat/AZ': split_rhat_az.mean().item()})
     #logs.update({f'rnSplitRhat/AZ': rnsplit_rhat_az.mean().item()})
-    end = timer()
-    print('SplitRhat/AZ', end - start)
-
-    start = timer()
     logs.update({f'IPS/AZ': sample_eval.ess_az().mean().item()})
-    end = timer()
-    print('IPS/AZ', end - start)
     #TODO: Log Acceptance rate, IPS for all chains combined
-
-    start = timer()
+    
     #Shift WANDB in Evaluation file?
     wandb.log({f'Rhat vs Burn-in': sample_eval.rhat_burnin_plot()})
     wandb.log({f'IPS vs Burn-in': sample_eval.ips_burnin_plot()})
@@ -226,7 +197,7 @@ if evaluate_samples:
     for plot in trace_plots:
         wandb.log({f'{plot}': trace_plots[plot]})
     end = timer()
-    print('Plots', end - start)
+    print('Eval Samples', end - start)
 
 
 if evaluate_testset:
