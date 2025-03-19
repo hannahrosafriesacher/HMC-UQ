@@ -1,29 +1,39 @@
 import torch
+import torch.nn as nn
 import numpy as np
 import torch.nn.functional as F
 from torch.autograd import Variable
+from collections import OrderedDict
 
 
-class MLP(torch.nn.Module):
-    def __init__(self, input_features, hidden_sizes, output_features, dropout):
+class MLP(nn.Module):
+    def __init__(self, input_features, hidden_sizes, nr_layers, output_features, dropout):
         super().__init__()
         self.input_features = input_features
         self.hidden_sizes = hidden_sizes
         self.output_features = output_features
-        self.input = torch.nn.Linear(in_features=input_features, out_features=hidden_sizes)
-        self.tanh = torch.nn.Tanh()
-        self.dropout = torch.nn.Dropout(p=dropout)
-        self.output = torch.nn.Linear(in_features=hidden_sizes, out_features=output_features)
+        self.nr_layers = nr_layers
+
+        model = OrderedDict([])
+        #First Layer
+        model.update({f'0': nn.Linear(input_features,hidden_sizes)})
+        model.update({f'activation' : nn.Tanh()})
+        model.update({f'dropout' : nn.Dropout(dropout)})
+
+        #add layers
+        for i in range(nr_layers-1):
+            model.update({f'{i+1}': nn.Linear(hidden_sizes,hidden_sizes)})
+            model.update({f'activation' : nn.Tanh()})
+            model.update({f'dropout' : nn.Dropout(dropout)})
+
+        model.update({f'{nr_layers}': nn.Linear(hidden_sizes,output_features)})
+
+        self.model = nn.Sequential(model)
         
-    def forward(self, x):
-        fc = self.input(x)
-        a = self.tanh(fc)
-        dr = self.dropout(a)
-        out = self.output(dr)
-             
-        return out  
+    def forward(self, x):             
+        return self.model(x)  
     
-class BNN(torch.nn.Module):
+class BNN(nn.Module):
     """
     Re-implementation of the BNN in Bayes by Backprop (Blundell et al., 2015).
     """
@@ -52,7 +62,7 @@ class BNN(torch.nn.Module):
             hidden_layers.append(hidden_sizes)
         hidden_layers.append(output_dim)
 
-        self.nr_layers = torch.nn.ModuleList()
+        self.nr_layers = nn.ModuleList()
         for layer in range(len(hidden_layers)-2):
             self.nr_layers.append(
                 BayesWeightLayer(hidden_layers[layer], hidden_layers[layer+1], prior_mu, prior_rho, prior_sig, activation='tanh')
@@ -70,7 +80,7 @@ class BNN(torch.nn.Module):
         return x, net_kl
 
 
-class BayesWeightLayer(torch.nn.Module):
+class BayesWeightLayer(nn.Module):
     '''
     Layer used in BNN, heavily inspired by the implementation in 
     https://github.com/JavierAntoran/Bayesian-Neural-Networks/tree/master.
@@ -90,12 +100,12 @@ class BayesWeightLayer(torch.nn.Module):
         self._Var = lambda x: Variable(torch.from_numpy(x).type(torch.FloatTensor)) #Function that outputs TorchTensor
 
         # Learnable parameters (Parameters of surrogate distribution)
-        self.W_mu = torch.nn.Parameter(torch.Tensor(input_dim, output_dim).uniform_(-0.01, 0.01)) # SurrWeights: mean
-        self.W_rho = torch.nn.Parameter(torch.Tensor(input_dim, output_dim).uniform_(-3, -3)) #SurrWeights: Var
+        self.W_mu = nn.Parameter(torch.Tensor(input_dim, output_dim).uniform_(-0.01, 0.01)) # SurrWeights: mean
+        self.W_rho = nn.Parameter(torch.Tensor(input_dim, output_dim).uniform_(-3, -3)) #SurrWeights: Var
 
-        self.b_mu = torch.nn.Parameter(torch.Tensor(output_dim).uniform_(-0.01, 0.01)) #SurrBias: mean
-        self.b_rho = torch.nn.Parameter(torch.Tensor(output_dim).uniform_(-3, -3)) # SurrBias: Var
-        self.activation = torch.nn.Tanh() if activation == 'tanh' else None
+        self.b_mu = nn.Parameter(torch.Tensor(output_dim).uniform_(-0.01, 0.01)) #SurrBias: mean
+        self.b_rho = nn.Parameter(torch.Tensor(output_dim).uniform_(-3, -3)) # SurrBias: Var
+        self.activation = nn.Tanh() if activation == 'tanh' else None
     
     def forward(self, x):
         

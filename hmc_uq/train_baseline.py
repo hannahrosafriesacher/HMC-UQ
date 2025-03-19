@@ -10,6 +10,7 @@ import numpy as np
 import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader
+from collections import OrderedDict
 
 from utils.load_config import get_args
 from utils.models import MLP
@@ -83,9 +84,10 @@ num_input_features = train_dataset.__getinputdim__()
 wandb.config['dim_input'] = num_input_features
 
 net = MLP(
-    hidden_sizes=hidden_sizes, 
     input_features=num_input_features, 
     output_features=1, 
+    nr_layers = nr_layers,
+    hidden_sizes=hidden_sizes, 
     dropout=dropout
     ).to(device)
 

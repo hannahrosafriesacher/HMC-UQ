@@ -96,9 +96,10 @@ wandb.config['dim_input'] = num_input_features
     
 for chain in range(nr_chains):
     net = MLP(
-        hidden_sizes=hidden_sizes, 
         input_features=num_input_features, 
-        output_features=1, 
+        output_features=1,
+        nr_layers=nr_layers,
+        hidden_sizes=hidden_sizes,          
         dropout=dropout
         )
     if init == 'random':
@@ -109,14 +110,11 @@ for chain in range(nr_chains):
         with open(yaml_path, "r") as file:
             paths = yaml.safe_load(file)[target_id]
 
-        #TODO: implement for more layers
-        #TODO: re-implement
         params_surrogate = torch.load(paths)
         params = OrderedDict()
-        params['input.weight'] = params_surrogate[f'nr_layers.0.W_mu'].T + params_surrogate[f'nr_layers.0.W_rho'].T * torch.rand_like(params_surrogate[f'nr_layers.0.W_rho'].T)
-        params['input.bias'] = params_surrogate['nr_layers.0.b_mu'] + params_surrogate['nr_layers.0.b_rho'] * torch.rand_like(params_surrogate[f'nr_layers.0.b_rho'])
-        params['output.weight'] = params_surrogate['nr_layers.1.W_mu'].T + params_surrogate['nr_layers.1.W_rho'].T * torch.rand_like(params_surrogate[f'nr_layers.1.W_rho'].T)
-        params['output.bias'] = params_surrogate['nr_layers.1.b_mu'] + params_surrogate['nr_layers.1.b_rho'] * torch.rand_like(params_surrogate[f'nr_layers.1.b_rho'])
+        for l in range(nr_layers + 1):
+            params[f'model.{l}.weight'] = params_surrogate[f'nr_layers.{l}.W_mu'].T + params_surrogate[f'nr_layers.{l}.W_rho'].T * torch.rand_like(params_surrogate[f'nr_layers.{l}.W_rho'].T)
+            params[f'model.{l}.bias'] = params_surrogate[f'nr_layers.{l}.b_mu'] + params_surrogate[f'nr_layers.{l}.b_rho'] * torch.rand_like(params_surrogate[f'nr_layers.{l}.b_rho'])
         net.load_state_dict(params)
         params_init = hamiltorch.util.flatten(net).to(device).clone()
 
@@ -187,9 +185,7 @@ if evaluate_samples:
     #logs.update({f'SplitRhat/AZ': split_rhat_az.mean().item()})
     #logs.update({f'rnSplitRhat/AZ': rnsplit_rhat_az.mean().item()})
     logs.update({f'IPS/AZ': sample_eval.ess_az().mean().item()})
-    #TODO: Log Acceptance rate, IPS for all chains combined
-    
-    #Shift WANDB in Evaluation file?
+  
     wandb.log({f'Rhat vs Burn-in': sample_eval.rhat_burnin_plot()})
     wandb.log({f'IPS vs Burn-in': sample_eval.ips_burnin_plot()})
     wandb.log({f'Autocorrelation': sample_eval.autocorrelation_plot()})

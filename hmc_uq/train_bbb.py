@@ -168,5 +168,5 @@ for epoch in tqdm(range(nr_epochs), desc=f'Training {nr_epochs} epochs:'):  # lo
                 lookup[target_id] = ckp_path  
                 with open(ckpt_lookup, 'w') as file:
                     yaml.dump(lookup, file)
-
+torchdic = net.state_dict()
 wandb.summary.update(performance_best)
