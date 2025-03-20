@@ -19,8 +19,10 @@
 **/profile/
 
 #ignore scipts
-**/scripts/
+**/scripts/*
 
 #ignore notebooks
 **/notebooks/
 
+#ignore model configs
+**/configs/models/

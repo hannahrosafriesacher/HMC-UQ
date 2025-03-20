@@ -13,7 +13,7 @@ from utils.evaluation import BaselinePredictivePerformance
 from utils.data import SparseDataset
 import wandb
 
-args = get_args(config_file = 'configs/models/baseline.yaml')
+args = get_args(config_file = 'configs/models/MLP.yaml')
 print("Loaded Configuration:")
 for key, value in vars(args).items():
     print(f"{key}: {value}")
@@ -129,14 +129,14 @@ for epoch in tqdm(range(nr_epochs), desc=f'Training {nr_epochs} epochs:'):  # lo
 
             performance_best = performance_best | te_performance_epoch
 
-            res_dir = f'results/MLP/'
+            res_dir = f'results/predictions/MLP/'
             os.makedirs(res_dir, exist_ok = True)
             res_path = f'{res_dir}{target_id}_nrl{nr_layers}_hs{hidden_sizes}_lr{learning_rate}_wd{weight_decay}_do{dropout}'
             np.save(res_path , pred_te.cpu().detach().numpy())
 
         if save_model:
 
-            ckpt_dir = f'logs/MLP/'
+            ckpt_dir = f'results/models/MLP/'
             os.makedirs(ckpt_dir, exist_ok = True)
             ckp_path = f'{ckpt_dir}{target_id}_nrl{nr_layers}_hs{hidden_sizes}_lr{learning_rate}_wd{weight_decay}_do{dropout}'
 

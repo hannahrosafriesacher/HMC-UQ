@@ -18,7 +18,7 @@ import wandb
 
 from timeit import default_timer as timer
 
-args = get_args(config_file = 'configs/models/hmc.yaml')
+args = get_args(config_file = 'configs/models/HMC.yaml')
 print("Loaded Configuration:")
 for key, value in vars(args).items():
     print(f"{key}: {value}")
@@ -181,9 +181,9 @@ if evaluate_samples:
     logs.update({f'IPS/chain{chain +1}': ips for chain, ips in enumerate(sample_eval.ips_per_chain(burnin=False))}) #SampleSize
     logs.update({f'IPS-burnin/chain{chain +1}': ips for chain, ips in enumerate(sample_eval.ips_per_chain(burnin=True))})
 
-    #split_rhat_az, rnsplit_rhat_az = sample_eval.rhat_az()
-    #logs.update({f'SplitRhat/AZ': split_rhat_az.mean().item()})
-    #logs.update({f'rnSplitRhat/AZ': rnsplit_rhat_az.mean().item()})
+    split_rhat_az, rnsplit_rhat_az = sample_eval.rhat_az()
+    logs.update({f'SplitRhat/AZ': split_rhat_az.mean().item()})
+    logs.update({f'rnSplitRhat/AZ': rnsplit_rhat_az.mean().item()})
     logs.update({f'IPS/AZ': sample_eval.ess_az().mean().item()})
     wandb.log({f'Rhat vs Burn-in': sample_eval.rhat_burnin_plot()})
     wandb.log({f'IPS vs Burn-in': sample_eval.ips_burnin_plot()})
@@ -208,14 +208,14 @@ if evaluate_testset:
     logs.update({f'/test/auc/average': np.mean(auc_te)}) 
 
     #Save Test Set Predictions
-    res_dir = f'results/HMC/'
+    res_dir = f'results/predictions/HMC/'
     os.makedirs(res_dir, exist_ok = True)
     res_path = f'{res_dir}{target_id}_e{step_size}_l{L}_nrs{nr_samples}_nrc{nr_chains}'
     np.save(res_path , preds_chains_te.cpu().detach().numpy())
 
 #Save Params
 if save_model:
-    ckpt_dir = f'logs/HMC/'
+    ckpt_dir = f'results/models/HMC/'
     os.makedirs(ckpt_dir, exist_ok = True)
     ckp_path = f'{ckpt_dir}{target_id}_e{step_size}_l{L}_nrs{nr_samples}_nrc{nr_chains}'
 

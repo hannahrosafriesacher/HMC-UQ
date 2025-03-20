@@ -277,7 +277,7 @@ class HMCSampleEvaluation:
         
         for ind, name in enumerate(layer_names):        
             params_layer = self.params_chains[:,:, count[ind]:count[ind+1]]
-            nr_params_layer = params_layer.shape[1]
+            nr_params_layer = params_layer.shape[2]
             #choose 50 params randomly if >50 params in that layer
             if nr_params_layer > nr_plotparams:
                 rand_ind = random.sample(range(nr_params_layer), nr_plotparams)
