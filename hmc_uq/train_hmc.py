@@ -171,7 +171,7 @@ logs.update({f'/val/auc/average': np.mean(auc_val)})
 
 start = timer()
 if evaluate_samples:
-    sample_eval = HMCSampleEvaluation(params_chains)
+    sample_eval = HMCSampleEvaluation(params_chains, num_input_features, hidden_sizes, reduce = 100)
 
     ac = sample_eval.calculate_autocorrelation()
     
@@ -185,7 +185,6 @@ if evaluate_samples:
     #logs.update({f'SplitRhat/AZ': split_rhat_az.mean().item()})
     #logs.update({f'rnSplitRhat/AZ': rnsplit_rhat_az.mean().item()})
     logs.update({f'IPS/AZ': sample_eval.ess_az().mean().item()})
-  
     wandb.log({f'Rhat vs Burn-in': sample_eval.rhat_burnin_plot()})
     wandb.log({f'IPS vs Burn-in': sample_eval.ips_burnin_plot()})
     wandb.log({f'Autocorrelation': sample_eval.autocorrelation_plot()})

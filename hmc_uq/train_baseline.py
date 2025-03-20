@@ -1,7 +1,3 @@
-#TODO: implement NN with more than 1 layers
-#TODO: mutiple forward passes during BbB?
-
-
 import os
 import yaml
 from tqdm import tqdm
@@ -10,7 +6,6 @@ import numpy as np
 import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader
-from collections import OrderedDict
 
 from utils.load_config import get_args
 from utils.models import MLP

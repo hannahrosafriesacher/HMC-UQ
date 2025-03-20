@@ -84,14 +84,23 @@ class HMCPredictivePerformance:
             return df['AUC'].to_list()
 
 class HMCSampleEvaluation:
-    def __init__(self, params_chains):
-        self.params_chains = params_chains
-        self.nr_chains, self.nr_samples,self.nr_params = params_chains.shape
+    def __init__(self, params_chains, input_size, hidden_size, reduce = False):
+        if reduce:
+            dim_first = input_size*hidden_size
+            idx = random.sample(range(dim_first), reduce)
+            first_layer = params_chains[:, :, idx]
+            rest_layer = params_chains[:, :, dim_first:]
+            self.params_chains = np.concatenate((first_layer, rest_layer), axis = 2)
+        else:
+            self.params_chains = params_chains
+
+        self.nr_chains, self.nr_samples, self.nr_params = self.params_chains.shape
         self.max_burnin = 50 if self.nr_samples > 50 else self.nr_samples  #for plotting Burnin vs Metrics
         self.burnin_step = 5 if self.max_burnin > 5 else 1 #for plotting Burnin vs Metrics
         self.AC = {'Burn-in' : [], 'Chain':[], 'LAG' : [],'#Burn-in': [], 'AUTOCORR': []}
         self.IPS = {'#Burn-in' : [], 'Chain': [], 'IPS':[]}
         self.RHAT = {'#Burn-in' : [], 'Split-Rhat':[], 'rnSplit-Rhat':[]}
+        self.reduce = reduce
 
     
     def autocorrelation_singleparam(self, params_chain):
@@ -259,8 +268,11 @@ class HMCSampleEvaluation:
         count = [0]
         layer_names = []
         figures = {}
-        for layer in net_dict:
-            count.append(net_dict[layer].numel())
+        for i, layer in enumerate(net_dict):
+            if i == 0 and self.reduce:
+                count.append(self.reduce)
+            else:   
+                count.append(net_dict[layer].numel())
             layer_names.append(layer)
         
         for ind, name in enumerate(layer_names):        

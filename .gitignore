@@ -21,4 +21,6 @@
 #ignore scipts
 **/scripts/
 
+#ignore notebooks
+**/notebooks/
 
