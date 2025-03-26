@@ -141,7 +141,7 @@ for chain in range(nr_chains):
     logs.update({f'ar/chain{chain + 1}': accept_rate})
 
     params = torch.stack(params_gpu, dim = 0).cpu().numpy()
-    params_chains.append(params)
+    params_chains.append(params) #TODO: save it into file and params = None
     
     #get predictions for validation ds
     pred_list_val, log_prob_list_val = hamiltorch.predict_model(net, test_loader = dataloader_val, samples=params_gpu, model_loss=model_loss, tau_out=tau_out, tau_list=tau_list)
@@ -210,14 +210,14 @@ if evaluate_testset:
     #Save Test Set Predictions
     res_dir = f'results/predictions/HMC/'
     os.makedirs(res_dir, exist_ok = True)
-    res_path = f'{res_dir}{target_id}_e{step_size}_l{L}_nrs{nr_samples}_nrc{nr_chains}'
+    res_path = f'{res_dir}{target_id}_e{step_size}_l{L}_nrs{nr_samples}_nrc{nr_chains}_{init}init'
     np.save(res_path , preds_chains_te.cpu().detach().numpy())
 
 #Save Params
 if save_model:
     ckpt_dir = f'results/models/HMC/'
     os.makedirs(ckpt_dir, exist_ok = True)
-    ckp_path = f'{ckpt_dir}{target_id}_e{step_size}_l{L}_nrs{nr_samples}_nrc{nr_chains}'
+    ckp_path = f'{ckpt_dir}{target_id}_e{step_size}_l{L}_nrs{nr_samples}_nrc{nr_chains}_{init}init'
 
     #Save model
     np.save(ckp_path, params_chains)
