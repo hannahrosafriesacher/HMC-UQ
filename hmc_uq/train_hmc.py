@@ -61,10 +61,11 @@ init = wandb.config.init
 save_model = wandb.config.save_model
 evaluate_testset = wandb.config.evaluate_testset
 evaluate_samples = wandb.config.evaluate_samples
+
 device = wandb.config.device
+rep = wandb.config.rep
 
-
-hamiltorch.set_random_seed(123)
+#hamiltorch.set_random_seed(123)
 os.environ['CUDA_VISIBLE_DEVICES']='0'
 if device == 'gpu' and torch.cuda.is_available():
     device = 'cuda'
@@ -210,14 +211,14 @@ if evaluate_testset:
     #Save Test Set Predictions
     res_dir = f'results/predictions/HMC/'
     os.makedirs(res_dir, exist_ok = True)
-    res_path = f'{res_dir}{target_id}_e{step_size}_l{L}_nrs{nr_samples}_nrc{nr_chains}_{init}init'
+    res_path = f'{res_dir}{target_id}_e{step_size}_l{L}_nrs{nr_samples}_nrc{nr_chains}_{init}init_rep{rep}'
     np.save(res_path , preds_chains_te.cpu().detach().numpy())
 
 #Save Params
 if save_model:
     ckpt_dir = f'results/models/HMC/'
     os.makedirs(ckpt_dir, exist_ok = True)
-    ckp_path = f'{ckpt_dir}{target_id}_e{step_size}_l{L}_nrs{nr_samples}_nrc{nr_chains}_{init}init'
+    ckp_path = f'{ckpt_dir}{target_id}_e{step_size}_l{L}_nrs{nr_samples}_nrc{nr_chains}_{init}init_rep{rep}'
 
     #Save model
     np.save(ckp_path, params_chains)

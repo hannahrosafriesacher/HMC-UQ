@@ -14,6 +14,7 @@
 **/wandb/
 **/logs/*
 **/configs/ckpt_paths/*
+**/configs/models/*
 
 #ignore profiling
 **/profile/
