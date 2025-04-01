@@ -27,5 +27,3 @@
 
 #ignore model configs
 **/configs/models/
-
-**/evaluate_hmc.ipynb
