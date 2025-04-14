@@ -61,6 +61,7 @@ init = wandb.config.init
 save_model = wandb.config.save_model
 evaluate_testset = wandb.config.evaluate_testset
 evaluate_samples = wandb.config.evaluate_samples
+use_nuts = wandb.config.use_nuts
 
 device = wandb.config.device
 rep = wandb.config.rep
@@ -124,7 +125,10 @@ for chain in range(nr_chains):
     tau_list = [tau]
     tau_list = torch.tensor(tau_list).to(device)
     start = timer()
-    params_gpu, accept_rate = hamiltorch.sample_model(
+    sampler = hamiltorch.Sampler.HMC_NUTS if use_nuts else hamiltorch.Sampler.HMC
+    burn = 10 if use_nuts else -1
+    print('SAMPLER: ', sampler)
+    params_gpu, run_info = hamiltorch.sample_model(     #run_info = Acceptance rate or adapted epsilon depending if NUTS was used
         net, 
         x = train_dataset.__getdatasets__()[0], 
         y = train_dataset.__getdatasets__()[1], 
@@ -135,11 +139,13 @@ for chain in range(nr_chains):
         tau_out=tau_out,
         tau_list=tau_list, 
         model_loss=model_loss,
-        debug = 2
+        debug = 2,
+        sampler = sampler, 
+        burn = burn
         )
     end = timer()
     print('HMC Sampler', end - start)
-    logs.update({f'ar/chain{chain + 1}': accept_rate})
+    logs.update({f'adapt_step_size/chain{chain + 1}': run_info}) if use_nuts else logs.update({f'ar/chain{chain + 1}': run_info})
 
     params = torch.stack(params_gpu, dim = 0).cpu().numpy()
     params_chains.append(params) #TODO: save it into file and params = None
@@ -153,6 +159,7 @@ for chain in range(nr_chains):
         pred_list_te, log_prob_list_te = hamiltorch.predict_model(net, test_loader = dataloader_te, samples=params_gpu, model_loss=model_loss, tau_out=tau_out, tau_list=tau_list)
         pred_te = torch.squeeze(pred_list_te, 2)  
         preds_chains_te.append(pred_te)
+logs.update({f'burnin': burn}) 
 
 params_chains = np.stack(params_chains)
 preds_chains_val = torch.stack(preds_chains_val)
