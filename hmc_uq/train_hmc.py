@@ -184,6 +184,14 @@ auc_tr, plot_auc_tr = tr_performance.auc(return_plot=True)
 logs.update({f'/train/auc/chain{chain +1}': auc for chain, auc in enumerate(auc_tr)})
 logs.update({f'/train/auc/average': np.mean(auc_tr)})
 
+ece_tr, ace_tr, bs_tr, plot_ace_tr = tr_performance.calibration_errors(return_plot=True)
+logs.update({f'/train/ece/chain{chain +1}': ece for chain, ece in enumerate(ece_tr)})
+logs.update({f'/train/ece/average': np.mean(ece_tr)})
+logs.update({f'/train/ace/chain{chain +1}': ace for chain, ace in enumerate(ace_tr)})
+logs.update({f'/train/ace/average': np.mean(ace_tr)})
+logs.update({f'/train/bs/chain{chain +1}': bs for chain, bs in enumerate(bs_tr)})
+logs.update({f'/train/bs/average': np.mean(bs_tr)})
+
 #Validation Performance
 val_performance = HMCPredictivePerformance(preds_chains_val, val_dataset.__getdatasets__()[1])
 val_performance.calculate_performance()
@@ -195,6 +203,14 @@ logs.update({f'/val/loss/average': np.mean(nll_val)})
 auc_val, plot_auc_val = val_performance.auc(return_plot=True)
 logs.update({f'/val/auc/chain{chain +1}': auc for chain, auc in enumerate(auc_val)})
 logs.update({f'/val/auc/average': np.mean(auc_val)})
+
+ece_val, ace_val, bs_val, plot_ace_val = val_performance.calibration_errors(return_plot=True)
+logs.update({f'/val/ece/chain{chain +1}': ece for chain, ece in enumerate(ece_val)})
+logs.update({f'/val/ece/average': np.mean(ece_val)})
+logs.update({f'/val/ace/chain{chain +1}': ace for chain, ace in enumerate(ace_val)})
+logs.update({f'/val/ace/average': np.mean(ace_val)})
+logs.update({f'/val/bs/chain{chain +1}': bs for chain, bs in enumerate(bs_val)})
+logs.update({f'/val/bs/average': np.mean(bs_val)})
 
 #Evaluate Samples
 start = timer()
@@ -234,6 +250,14 @@ if evaluate_testset:
     auc_te = te_performance.auc(return_plot=False)
     logs.update({f'/test/auc/chain{chain +1}': auc for chain, auc in enumerate(auc_te)})
     logs.update({f'/test/auc/average': np.mean(auc_te)}) 
+
+    ece_te, ace_te, bs_te, plot_ace_te = te_performance.calibration_errors(return_plot=True)
+    logs.update({f'/test/ece/chain{chain +1}': ece for chain, ece in enumerate(ece_te)})
+    logs.update({f'/test/ece/average': np.mean(ece_te)})
+    logs.update({f'/test/ace/chain{chain +1}': ace for chain, ace in enumerate(ace_te)})
+    logs.update({f'/test/ace/average': np.mean(ace_te)})
+    logs.update({f'/test/bs/chain{chain +1}': bs for chain, bs in enumerate(bs_te)})
+    logs.update({f'/test/bs/average': np.mean(bs_te)})
 
     #Save Test Set Predictions
     res_dir = f'results/predictions/HMC/'

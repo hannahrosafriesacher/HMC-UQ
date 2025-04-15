@@ -11,6 +11,8 @@ import math
 import random
 import arviz as az
 
+from utils.calibration_metrics import ECE, ACE, BrierScore
+
 
 class BaselinePredictivePerformance:
     def __init__(self, preds, labels, epoch, phase) -> None:
@@ -42,25 +44,35 @@ class HMCPredictivePerformance:
         self.preds_chains = F.sigmoid(preds_chains)
         self.labels = labels
         self.nr_chains, self.nr_samples, _ = preds_chains.shape
-        self.PF = {'Chain' : [], '#HMC Samples' : [], 'NLL': [], 'AUC':[]}
+        self.PF = {'Chain' : [], '#HMC Samples' : [], 'NLL': [], 'AUC':[],'ECE': [],'ACE': [],'BRIER': []}
+        self.ECE = ECE(bins=10)
+        self.ACE = ACE(bins=10)
+        self.BS = BrierScore()
         
     def calculate_performance(self):
         #NLL and AUC performance
-        for chain in range(self.nr_chains):
+        for chain in range(1, self.nr_chains + 1):
+            ece = 0
+            ace = 0
+            bs = 0
             nll = 0
             auc = 0
-            pred = self.preds_chains[chain]
-            for sample in range(self.nr_samples):
-                pred_sample = pred[sample]
+            pred = self.preds_chains[chain-1]
+            for sample in range(1, self.nr_samples + 1):
+                pred_sample = pred[sample-1]
+                ece += self.ECE.compute(pred_sample.cpu().detach(), self.labels.cpu().detach()).item()
+                ace += self.ACE.compute(pred_sample.cpu().detach(), self.labels.cpu().detach()).item()
+                bs += self.BS.compute(pred_sample.cpu().detach(), self.labels.cpu().detach()).item()
                 nll += self.loss(pred_sample, self.labels.squeeze(dim = 1).float()).item()
                 auc += roc_auc_score(np.asarray(self.labels.cpu().detach().numpy()), np.asarray(pred_sample.cpu()))
-                mean_nll = nll/(sample+1)
-                mean_auc = auc/(sample+1)
 
-                self.PF['#HMC Samples'].append(sample + 1)
-                self.PF['Chain'].append(chain + 1)
-                self.PF['NLL'].append(mean_nll) 
-                self.PF['AUC'].append(mean_auc)
+                self.PF['#HMC Samples'].append(sample)
+                self.PF['Chain'].append(chain)
+                self.PF['NLL'].append(nll/sample) 
+                self.PF['AUC'].append(auc/sample)
+                self.PF['ECE'].append(ece/sample)
+                self.PF['ACE'].append(ace/sample)
+                self.PF['BRIER'].append(bs/sample)
         self.PF = pd.DataFrame(self.PF)
         return self.PF
     
@@ -82,6 +94,15 @@ class HMCPredictivePerformance:
             return df['AUC'].to_list(), AUC_plot
         else:
             return df['AUC'].to_list()
+        
+    def calibration_errors(self, return_plot, plotted = 'ACE'):
+        df = self.PF[self.PF['#HMC Samples'] == self.nr_samples]
+        if return_plot:
+            plt.cla()
+            AUC_plot = sns.lineplot(data = self.PF, x = '#HMC Samples', y = plotted, hue = 'Chain')
+            return df['ECE'].to_list(), df['ACE'].to_list(), df['BRIER'].to_list(), AUC_plot
+        else:
+            return df['ECE'].to_list(), df['ACE'].to_list(), df['BRIER'].to_list()
 
 class HMCSampleEvaluation:
     def __init__(self, params_chains, input_size, hidden_size, reduce = False):
