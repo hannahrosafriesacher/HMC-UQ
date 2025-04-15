@@ -85,6 +85,7 @@ val_dataset = SparseDataset(X_singleTask, Y_singleTask, folding, va_fold, device
 dataloader_tr = DataLoader(train_dataset, batch_size=200, shuffle=True)
 dataloader_val = DataLoader(val_dataset, batch_size=200, shuffle=False)
 params_chains = []
+preds_chains_tr = []
 preds_chains_val = []
 
 if evaluate_testset:
@@ -127,7 +128,7 @@ for chain in range(nr_chains):
     start = timer()
     sampler = hamiltorch.Sampler.HMC_NUTS if use_nuts else hamiltorch.Sampler.HMC
     burn = 10 if use_nuts else -1
-    print('SAMPLER: ', sampler)
+
     params_gpu, run_info = hamiltorch.sample_model(     #run_info = Acceptance rate or adapted epsilon depending if NUTS was used
         net, 
         x = train_dataset.__getdatasets__()[0], 
@@ -149,6 +150,11 @@ for chain in range(nr_chains):
 
     params = torch.stack(params_gpu, dim = 0).cpu().numpy()
     params_chains.append(params) #TODO: save it into file and params = None
+
+    #get predictions for validation ds
+    pred_list_tr, log_prob_list_tr = hamiltorch.predict_model(net, test_loader = dataloader_tr, samples=params_gpu, model_loss=model_loss, tau_out=tau_out, tau_list=tau_list)
+    pred_tr = torch.squeeze(pred_list_tr, 2)  
+    preds_chains_tr.append(pred_tr)
     
     #get predictions for validation ds
     pred_list_val, log_prob_list_val = hamiltorch.predict_model(net, test_loader = dataloader_val, samples=params_gpu, model_loss=model_loss, tau_out=tau_out, tau_list=tau_list)
@@ -162,10 +168,23 @@ for chain in range(nr_chains):
 logs.update({f'burnin': burn}) 
 
 params_chains = np.stack(params_chains)
+preds_chains_tr = torch.stack(preds_chains_tr)
 preds_chains_val = torch.stack(preds_chains_val)
 preds_chains_te = torch.stack(preds_chains_te) if evaluate_testset else None
 
+#Train Performance
+tr_performance = HMCPredictivePerformance(preds_chains_tr, train_dataset.__getdatasets__()[1])
+tr_performance.calculate_performance()
 
+nll_tr, plot_nll_tr = tr_performance.nll(return_plot=True)
+logs.update({f'/train/loss/chain{chain +1}': nll for chain, nll in enumerate(nll_tr)})
+logs.update({f'/train/loss/average': np.mean(nll_tr)})
+
+auc_tr, plot_auc_tr = tr_performance.auc(return_plot=True)
+logs.update({f'/train/auc/chain{chain +1}': auc for chain, auc in enumerate(auc_tr)})
+logs.update({f'/train/auc/average': np.mean(auc_tr)})
+
+#Validation Performance
 val_performance = HMCPredictivePerformance(preds_chains_val, val_dataset.__getdatasets__()[1])
 val_performance.calculate_performance()
 
@@ -177,6 +196,7 @@ auc_val, plot_auc_val = val_performance.auc(return_plot=True)
 logs.update({f'/val/auc/chain{chain +1}': auc for chain, auc in enumerate(auc_val)})
 logs.update({f'/val/auc/average': np.mean(auc_val)})
 
+#Evaluate Samples
 start = timer()
 if evaluate_samples:
     sample_eval = HMCSampleEvaluation(params_chains, num_input_features, hidden_sizes, reduce = 100)
