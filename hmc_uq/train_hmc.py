@@ -262,7 +262,7 @@ if evaluate_testset:
     #Save Test Set Predictions
     res_dir = f'results/predictions/HMC/'
     os.makedirs(res_dir, exist_ok = True)
-    res_path = f'{res_dir}{target_id}_e{step_size}_l{L}_nrs{nr_samples}_nrc{nr_chains}_{init}init_rep{rep}'
+    res_path = f'{res_dir}{target_id}_e{step_size}_l{L}_nrs{nr_samples}_nrc{nr_chains}_{init}init_rep{rep}_test'
     np.save(res_path , preds_chains_te.cpu().detach().numpy())
 
 #Save Params

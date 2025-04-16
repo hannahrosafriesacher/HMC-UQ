@@ -11,7 +11,7 @@ import math
 import random
 import arviz as az
 
-from utils.calibration_metrics import ECE, ACE, BrierScore
+from hmc_uq.utils.calibration_metrics import ECE, ACE, BrierScore
 
 
 class BaselinePredictivePerformance:
@@ -324,6 +324,37 @@ class HMCSampleEvaluation:
         return figures
 
 #TODO: Monte Carlo Standard Error?, plot Convergence, ESS for every layer/bias
+
+
+class PredictiveEvaluation:
+    def __init__(self, preds, labels, ds_type) -> None:
+        self.loss = torch.nn.BCELoss()
+        self.preds = preds #preds need to be avergared over all samples
+        self.preds_torch = torch.from_numpy(preds)
+        self.labels = labels
+        self.ECE = ECE(bins=10)
+        self.ACE = ACE(bins=10)
+        self.BS = BrierScore()
+        self.ds_type = ds_type
+        self.PF = {}
+
+    def auc(self):
+        self.PF['auc'] = roc_auc_score(self.labels, self.preds)
+
+    def nll(self):
+        self.PF['nll']  = self.loss(self.labels, self.preds_torch.double()).item()
+
+    def calibration_errors(self):
+        self.PF['ece'] = self.ECE.compute(self.preds_torch, self.labels).item()
+        self.PF['ace'] = self.ACE.compute( self.preds_torch, self.labels).item()
+        self.PF['bs'] = self.BS.compute(self.preds_torch, self.labels).item()
+
+    def evaluate(self):
+        self.auc()
+        self.nll()
+        self.calibration_errors()
+        return pd.DataFrame(self.PF, index = [0])
+        
 
 
 
