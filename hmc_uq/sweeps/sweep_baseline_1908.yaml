@@ -1,15 +1,17 @@
-program: hmc_uq/baseline_hyperParamTuning_WB.py
-name: hp_1133
-project: uq-hmc
+program: hmc_uq/baseline_sweep.py
+name: hp_1908_repeat
+project: uq-hmc_repeat
 method: grid
 parameters:
   target_id:
     values: [1908]
   learning_rate:
-    values: [1e-5, 1e-4, 1e-3, 1e-2, 0.1]
+    values: [0.1,0.01,0.001,1e-4]
   weight_decay:
-    values: [1e-5, 1e-4, 1e-3, 1e-2, 0.1]
-  hidden_sizes:
-    values: [4,5,6,7,8,9,10,15,20,25,30]
+    values: [0.1,0.01,0.001,1e-4]
+  hidden_size:
+    values: [2,4,5,10,20,30]
   dropout:
-    values: [0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+    values: [0.0]
+  nr_layers:
+    values: [1,2,3]
