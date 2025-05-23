@@ -77,20 +77,20 @@ logs = {}
 #load Datasets
 X_singleTask = np.load('data/chembl_29/chembl_29_X.npy', allow_pickle=True).item().tocsr()
 Y_singleTask = np.load('data/chembl_29/chembl_29_thresh.npy', allow_pickle=True).item().tocsr()[:,target_id]
-folding=np.load('data/chembl_29/folding.npy')
+folding = np.load('data/chembl_29/folding.npy')
 
 train_dataset = SparseDataset(X_singleTask, Y_singleTask, folding, tr_fold, device)
 val_dataset = SparseDataset(X_singleTask, Y_singleTask, folding, va_fold, device)
 
-dataloader_tr = DataLoader(train_dataset, batch_size=200, shuffle=True)
-dataloader_val = DataLoader(val_dataset, batch_size=200, shuffle=False)
+dataloader_tr = DataLoader(train_dataset, batch_size=200)
+dataloader_val = DataLoader(val_dataset)
 params_chains = []
 preds_chains_tr = []
 preds_chains_val = []
 
 if evaluate_testset:
     te_dataset = SparseDataset(X_singleTask, Y_singleTask, folding, te_fold, device)
-    dataloader_te = DataLoader(te_dataset, batch_size=200, shuffle=False)
+    dataloader_te = DataLoader(te_dataset)
     preds_chains_te = []
 
 num_input_features = train_dataset.__getinputdim__()
@@ -137,7 +137,6 @@ for chain in range(nr_chains):
         num_samples=nr_samples,
         step_size=step_size, 
         num_steps_per_sample=L,
-        tau_out=tau_out,
         tau_list=tau_list, 
         model_loss=model_loss,
         debug = 2,

@@ -72,12 +72,12 @@ folding = np.load('data/chembl_29/folding.npy')
 train_dataset = SparseDataset(X_singleTask, Y_singleTask, folding, tr_fold, device)
 val_dataset = SparseDataset(X_singleTask, Y_singleTask, folding, va_fold, device)
 
-dataloader_tr = DataLoader(train_dataset, batch_size=200, shuffle=True)
-dataloader_val = DataLoader(val_dataset, batch_size=200, shuffle=False)
+dataloader_tr = DataLoader(train_dataset, batch_size=200)
+dataloader_val = DataLoader(val_dataset)
 
 if evaluate_testset:
     te_dataset = SparseDataset(X_singleTask, Y_singleTask, folding, te_fold, device)
-    dataloader_te = DataLoader(te_dataset, batch_size=200, shuffle=False)
+    dataloader_te = DataLoader(te_dataset)
 
 num_input_features = train_dataset.__getinputdim__()
 
@@ -114,7 +114,7 @@ for epoch in tqdm(range(nr_epochs), desc=f'Training {nr_epochs} epochs:'):  # lo
     net.eval()
 
     pred_train, _ = net(train_dataset.__getdatasets__()[0])
-    train_performance = BaselinePredictivePerformance(pred_train, train_dataset.__getdatasets__()[1], epoch, 'val')
+    train_performance = BaselinePredictivePerformance(pred_train, train_dataset.__getdatasets__()[1], epoch, 'train')
     train_performance_epoch = train_performance.epoch_performance()
 
     pred_val, _ = net(val_dataset.__getdatasets__()[0])
