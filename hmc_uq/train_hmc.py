@@ -95,9 +95,10 @@ if evaluate_testset:
     preds_chains_te = []
 
 num_input_features = train_dataset.__getinputdim__()
-
+tau = 2*weight_decay
 wandb.config['dim_input'] = num_input_features
-    
+wandb.config['tau'] = tau
+
 for chain in range(nr_chains):
     net = MLP(
         input_features=num_input_features, 
@@ -151,6 +152,7 @@ for chain in range(nr_chains):
         inv_mass = inv_mass,
         num_steps_per_sample=L,
         tau_list=tau_list, 
+        tau_out=tau_out,
         model_loss=model_loss,
         debug = 2,
         sampler = sampler, 

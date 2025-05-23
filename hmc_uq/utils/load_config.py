@@ -31,7 +31,7 @@ def get_args(config_file = '/configs/models/baseline.yaml', config_name = 'CYP')
     #BBB HPs
     parser.add_argument("--prior_mu", type=float, default=0)
     parser.add_argument("--prior_rho", type=float, default=0)
-    parser.add_argument("--prior_sig", type=float, default=0.1)
+    parser.add_argument("--prior_sig", type=float)
     #HMC HPs
     parser.add_argument("--nr_chains", type=int)
     parser.add_argument("--step_size", type=float)
