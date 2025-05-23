@@ -62,6 +62,7 @@ save_model = wandb.config.save_model
 evaluate_testset = wandb.config.evaluate_testset
 evaluate_samples = wandb.config.evaluate_samples
 use_nuts = wandb.config.use_nuts
+tune_mm = wandb.config.tune_mm
 
 device = wandb.config.device
 rep = wandb.config.rep
@@ -129,6 +130,17 @@ for chain in range(nr_chains):
     sampler = hamiltorch.Sampler.HMC_NUTS if use_nuts else hamiltorch.Sampler.HMC
     burn = 10 if use_nuts else -1
 
+    if tune_mm:
+        print('Tuned inverse mass matrix loaded!')
+        mm_dir = f'results/mass_matrix/'
+        mm_path = f'{mm_dir}{target_id}_e{step_size}_l{L}_nrs{nr_samples}_nrc{nr_chains}_{init}init.npy'
+
+        assert os.path.exists(mm_path), f"Inverse Mass Matrix file does not exist: {file_path}"
+        
+        inv_mass = torch.from_numpy(np.load(mm_path)).to(device)
+    else:
+        inv_mass = None
+
     params_gpu, run_info = hamiltorch.sample_model(     #run_info = Acceptance rate or adapted epsilon depending if NUTS was used
         net, 
         x = train_dataset.__getdatasets__()[0], 
@@ -136,6 +148,7 @@ for chain in range(nr_chains):
         params_init=params_init, 
         num_samples=nr_samples,
         step_size=step_size, 
+        inv_mass = inv_mass,
         num_steps_per_sample=L,
         tau_list=tau_list, 
         model_loss=model_loss,
@@ -261,14 +274,14 @@ if evaluate_testset:
     #Save Test Set Predictions
     res_dir = f'results/predictions/HMC/'
     os.makedirs(res_dir, exist_ok = True)
-    res_path = f'{res_dir}{target_id}_e{step_size}_l{L}_nrs{nr_samples}_nrc{nr_chains}_{init}init_rep{rep}_test'
+    res_path = f'{res_dir}{target_id}_e{step_size}_l{L}_nrs{nr_samples}_nrc{nr_chains}_{init}init_mm{tune_mm}_rep{rep}_test'
     np.save(res_path , preds_chains_te.cpu().detach().numpy())
 
 #Save Params
 if save_model:
     ckpt_dir = f'results/models/HMC/'
     os.makedirs(ckpt_dir, exist_ok = True)
-    ckp_path = f'{ckpt_dir}{target_id}_e{step_size}_l{L}_nrs{nr_samples}_nrc{nr_chains}_{init}init_rep{rep}'
+    ckp_path = f'{ckpt_dir}{target_id}_e{step_size}_l{L}_nrs{nr_samples}_nrc{nr_chains}_{init}init_mm{tune_mm}_rep{rep}'
 
     #Save model
     np.save(ckp_path, params_chains)

@@ -44,6 +44,7 @@ def get_args(config_file = '/configs/models/baseline.yaml', config_name = 'CYP')
     parser.add_argument("--evaluate_testset", type=bool)
     parser.add_argument("--evaluate_samples", type=bool, default = True)
     parser.add_argument("--use_nuts", type=bool, default = False)
+    parser.add_argument("--tune_mm", type=bool, default = True)
     parser.add_argument("--device", type=str, default='gpu')
     parser.add_argument("--rep", type=int, default=0)
 
