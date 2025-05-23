@@ -30,8 +30,10 @@ wandb.login()
 os.environ['CUDA_VISIBLE_DEVICES']='1'
 
 device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 model_repeats=10
 number_models_std=10
+
 tr_fold = np.array([2,3,4])
 va_fold=1
 epoch_number=400

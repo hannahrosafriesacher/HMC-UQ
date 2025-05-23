@@ -10,8 +10,10 @@ from sklearn.metrics import roc_auc_score
 import math
 import random
 import arviz as az
-
-from hmc_uq.utils.calibration_metrics import ECE, ACE, BrierScore
+try:
+    from utils.calibration_metrics import ECE, ACE, BrierScore
+except:
+    from hmc_uq.utils.calibration_metrics import ECE, ACE, BrierScore
 
 
 class BaselinePredictivePerformance:
@@ -21,6 +23,9 @@ class BaselinePredictivePerformance:
         self.labels = labels.squeeze(dim = 1).float()
         self.epoch = epoch
         self.phase = phase
+        self.ECE = ECE(bins=10)
+        self.ACE = ACE(bins=10)
+        self.BS = BrierScore()
 
     def transform_array(self, array):
         return np.asarray(array.cpu().detach())
@@ -29,10 +34,16 @@ class BaselinePredictivePerformance:
         #NLL and AUC performance            
         nll = self.loss(self.preds, self.labels).detach().item()
         auc = roc_auc_score(self.transform_array(self.labels), self.transform_array(self.preds))
+        ece = self.ECE.compute(self.preds.cpu().detach(), self.labels.cpu().detach()).item()
+        ace = self.ACE.compute(self.preds.cpu().detach(), self.labels.cpu().detach()).item()
+        bs = self.BS.compute(self.preds.cpu().detach(), self.labels.cpu().detach()).item()
 
         log_dict = {'epoch' : self.epoch,
                     f'{self.phase}/loss/': nll,
-                    f'{self.phase}/auc/': auc}
+                    f'{self.phase}/auc/': auc,
+                    f'{self.phase}/ece/': ece,
+                    f'{self.phase}/ace/': ace,
+                    f'{self.phase}/bs/': bs}
         
         return log_dict
 
