@@ -123,7 +123,6 @@ for chain in range(nr_chains):
         net.load_state_dict(params)
         params_init = hamiltorch.util.flatten(net).to(device).clone()
 
-    tau = weight_decay
     #TODO: check code what happens if I specify only 1 tau?
     tau_list = [tau]
     tau_list = torch.tensor(tau_list).to(device)
