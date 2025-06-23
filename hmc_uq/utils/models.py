@@ -4,6 +4,9 @@ import numpy as np
 import torch.nn.functional as F
 from torch.autograd import Variable
 from collections import OrderedDict
+import pyro
+from pyro.nn import PyroModule, PyroSample
+import pyro.distributions as dist
 
 
 class MLP(nn.Module):
@@ -29,9 +32,33 @@ class MLP(nn.Module):
         model.update({f'{nr_layers}': nn.Linear(hidden_sizes,output_features)})
 
         self.model = nn.Sequential(model)
-        
-    def forward(self, x):             
-        return self.model(x)  
+
+class MLP_pyro(PyroModule):
+    #https://github.com/pyro-ppl/pyro/tree/cbc2e528fba150d085a141cf41c791033ad61232
+
+    def __init__(self, input_features, hidden_sizes, output_features, prior_scale, device):
+        super().__init__()
+
+        self.device = device
+        self.activation = nn.Tanh() 
+        self.layer1 = PyroModule[nn.Linear](input_features, hidden_sizes).to(device)  # Input to hidden layer
+        self.layer2 = PyroModule[nn.Linear](hidden_sizes, output_features).to(device)  # Hidden to output layer
+
+        # Set layer parameters as random variables
+        self.layer1.weight = PyroSample(dist.Normal(torch.zeros(1, device=device), torch.tensor([prior_scale], device=device)).expand([hidden_sizes, input_features]).to_event(2))
+        self.layer1.bias = PyroSample(dist.Normal(torch.zeros(1, device=device), torch.tensor([prior_scale], device=device)).expand([hidden_sizes]).to_event(1))
+        self.layer2.weight = PyroSample(dist.Normal(torch.zeros(1, device=device), torch.tensor([prior_scale], device=device)).expand([output_features, hidden_sizes]).to_event(2))
+        self.layer2.bias = PyroSample(dist.Normal(torch.zeros(1, device=device), torch.tensor([prior_scale], device=device)).expand([output_features]).to_event(1))
+
+    def forward(self, x, y=None):
+        x = x.to(self.device)
+        x = self.activation(self.layer1(x))
+        mu = self.layer2(x).squeeze()
+        sig = torch.sigmoid(mu)
+        # Sampling model
+        with pyro.plate("data", x.shape[0]):
+            obs = pyro.sample("obs", dist.Bernoulli(sig), obs=y)
+        return mu  
     
 class BNN(nn.Module):
     """
