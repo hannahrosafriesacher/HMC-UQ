@@ -45,19 +45,24 @@ class MLP_pyro(PyroModule):
         self.layer2 = PyroModule[nn.Linear](hidden_sizes, output_features).to(device)  # Hidden to output layer
 
         # Set layer parameters as random variables
-        self.layer1.weight = PyroSample(dist.Normal(torch.zeros(1, device=device), torch.tensor([prior_scale], device=device)).expand([hidden_sizes, input_features]).to_event(2))
-        self.layer1.bias = PyroSample(dist.Normal(torch.zeros(1, device=device), torch.tensor([prior_scale], device=device)).expand([hidden_sizes]).to_event(1))
-        self.layer2.weight = PyroSample(dist.Normal(torch.zeros(1, device=device), torch.tensor([prior_scale], device=device)).expand([output_features, hidden_sizes]).to_event(2))
-        self.layer2.bias = PyroSample(dist.Normal(torch.zeros(1, device=device), torch.tensor([prior_scale], device=device)).expand([output_features]).to_event(1))
+        self.layer1.weight = PyroSample(dist.Normal(torch.zeros((hidden_sizes, input_features), device=device), torch.tensor([prior_scale], device=device)).to_event(2))
+        self.layer1.bias = PyroSample(dist.Normal(torch.zeros(hidden_sizes, device=device), torch.tensor([prior_scale], device=device)).to_event(1))
+        self.layer2.weight = PyroSample(dist.Normal(torch.zeros((output_features, hidden_sizes), device=device), torch.tensor([prior_scale], device=device)).to_event(2))
+        self.layer2.bias = PyroSample(dist.Normal(torch.zeros(output_features, device=device), torch.tensor([prior_scale], device=device)).to_event(1))
 
     def forward(self, x, y=None):
+        print(f'X : {x.shape}')
         x = x.to(self.device)
         x = self.activation(self.layer1(x))
+        print(f'X _hidden: {x.shape}')
         mu = self.layer2(x).squeeze()
+        print(f'Mu : {mu.shape}')
         sig = torch.sigmoid(mu)
+        print(f'Sig : {sig.shape}')
         # Sampling model
         with pyro.plate("data", x.shape[0]):
             obs = pyro.sample("obs", dist.Bernoulli(sig), obs=y)
+            print(f'obs : {obs.shape}')
         return mu  
     
 class BNN(nn.Module):
