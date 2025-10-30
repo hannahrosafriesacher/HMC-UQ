@@ -25,6 +25,9 @@ class SparseDataset(Dataset):
     
     def __getinputdim__(self):
         return self.X.shape[1]
+
+    def __getdatasetsize__(self):
+        return self.X.shape[0]
     
     def __getdatasets__(self):
         return self.X, self.Y

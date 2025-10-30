@@ -3,6 +3,7 @@
 
 #ignore results
 **/results/
+**/results_all/
 
 #ignore figures
 **/figures/

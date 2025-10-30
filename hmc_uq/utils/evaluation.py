@@ -19,8 +19,8 @@ except:
 class BaselinePredictivePerformance:
     def __init__(self, preds, labels, epoch, phase) -> None:
         self.loss = torch.nn.BCELoss()
-        self.preds = F.sigmoid(preds).squeeze(dim = 1)
         self.labels = labels.squeeze(dim = 1).float()
+        self.preds = F.sigmoid(preds).reshape(self.labels.shape)
         self.epoch = epoch
         self.phase = phase
         self.ECE = ECE(bins=10)
@@ -340,7 +340,7 @@ class HMCSampleEvaluation:
 class PredictiveEvaluation:
     def __init__(self, preds, labels, ds_type) -> None:
         self.loss = torch.nn.BCELoss()
-        self.preds = preds #preds need to be avergared over all samples
+        self.preds = preds
         self.preds_torch = torch.from_numpy(preds)
         self.labels = labels
         self.ECE = ECE(bins=10)
@@ -353,7 +353,7 @@ class PredictiveEvaluation:
         self.PF['auc'] = roc_auc_score(self.labels, self.preds)
 
     def nll(self):
-        self.PF['nll']  = self.loss(self.labels, self.preds_torch.double()).item()
+        self.PF['nll']  = self.loss(self.preds_torch.double(), self.labels).item()
 
     def calibration_errors(self):
         self.PF['ece'] = self.ECE.compute(self.preds_torch, self.labels).item()

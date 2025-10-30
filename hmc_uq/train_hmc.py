@@ -95,7 +95,7 @@ if evaluate_testset:
     preds_chains_te = []
 
 num_input_features = train_dataset.__getinputdim__()
-tau = 2*weight_decay
+tau = weight_decay*train_dataset.__getdatasetsize__()
 wandb.config['dim_input'] = num_input_features
 wandb.config['tau'] = tau
 

@@ -56,6 +56,7 @@ te_fold=wandb.config.te_fold
 evaluate_testset = wandb.config.evaluate_testset
 save_model = wandb.config.save_model
 device = wandb.config.device
+rep = wandb.config.rep
 
 
 os.environ['CUDA_VISIBLE_DEVICES']='0'
@@ -114,11 +115,11 @@ for epoch in tqdm(range(nr_epochs), desc=f'Training {nr_epochs} epochs:'):  # lo
     net.eval()
 
     pred_train, _ = net(train_dataset.__getdatasets__()[0])
-    train_performance = BaselinePredictivePerformance(pred_train, train_dataset.__getdatasets__()[1], epoch, 'train')
+    train_performance = BaselinePredictivePerformance(pred_train.unsqueeze(1), train_dataset.__getdatasets__()[1], epoch, 'train')
     train_performance_epoch = train_performance.epoch_performance()
 
     pred_val, _ = net(val_dataset.__getdatasets__()[0])
-    val_performance = BaselinePredictivePerformance(pred_val, val_dataset.__getdatasets__()[1], epoch, 'val')
+    val_performance = BaselinePredictivePerformance(pred_val.unsqueeze(1), val_dataset.__getdatasets__()[1], epoch, 'val')
     val_performance_epoch = val_performance.epoch_performance()
 
     performance_epoch = train_performance_epoch | val_performance_epoch  
@@ -126,6 +127,15 @@ for epoch in tqdm(range(nr_epochs), desc=f'Training {nr_epochs} epochs:'):  # lo
 
     if epoch == 0:
         performance_best = {'best/' + key: value for key, value in performance_epoch.items()}
+
+        if evaluate_testset:
+            pred_te, _ = net(te_dataset.__getdatasets__()[0])
+            
+            res_dir = f'results/predictions/BBB/'
+            os.makedirs(res_dir, exist_ok = True)
+            res_path = f'{res_dir}{target_id}_nrl{nr_layers}_hs{hidden_sizes}_lr{learning_rate}_wd{weight_decay}_prior{prior_sig}_rep{rep}'
+            np.save(res_path , pred_te.cpu().detach().numpy())
+
 
     elif val_performance_epoch['val/loss/'] <= performance_best['best/val/loss/']:
         performance_best = {'best/' + key: value for key, value in performance_epoch.items()}
@@ -139,14 +149,14 @@ for epoch in tqdm(range(nr_epochs), desc=f'Training {nr_epochs} epochs:'):  # lo
 
             res_dir = f'results/predictions/BBB/'
             os.makedirs(res_dir, exist_ok = True)
-            res_path = f'{res_dir}{target_id}_nrl{nr_layers}_hs{hidden_sizes}_lr{learning_rate}_wd{weight_decay}_prior{prior_sig}'
+            res_path = f'{res_dir}{target_id}_nrl{nr_layers}_hs{hidden_sizes}_lr{learning_rate}_wd{weight_decay}_prior{prior_sig}_rep{rep}'
             np.save(res_path , pred_te.cpu().detach().numpy())
 
         if save_model:
 
             ckpt_dir = f'results/models/BBB/'
             os.makedirs(ckpt_dir, exist_ok = True)
-            ckp_path = f'{ckpt_dir}{target_id}_nrl{nr_layers}_hs{hidden_sizes}_lr{learning_rate}_wd{weight_decay}_prior{prior_sig}'
+            ckp_path = f'{ckpt_dir}{target_id}_nrl{nr_layers}_hs{hidden_sizes}_lr{learning_rate}_wd{weight_decay}_prior{prior_sig}_rep{rep}'
 
             #Save model
             torch.save(net.state_dict(), ckp_path)
