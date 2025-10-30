@@ -1,7 +1,7 @@
 import argparse
 import yaml
 
-def load_config(config_file = 'configs/models/baseline.yaml', config_name='CYP'):
+def load_config(config_file = 'configs/models/baseline.yaml', config_name='MAO-A'):
     """Loads a specific configuration from a YAML file."""
     with open(config_file, "r") as f:
         all_configs = yaml.safe_load(f)
@@ -11,7 +11,7 @@ def load_config(config_file = 'configs/models/baseline.yaml', config_name='CYP')
     
     return all_configs[config_name]
 
-def get_args(config_file = '/configs/models/baseline.yaml', config_name = 'CYP'):
+def get_args(config_file = '/configs/models/baseline.yaml', config_name = 'MAO-A'):
     """Parses command-line arguments, with defaults from a YAML file."""
     parser = argparse.ArgumentParser(description="Model Configs")
 
@@ -28,6 +28,7 @@ def get_args(config_file = '/configs/models/baseline.yaml', config_name = 'CYP')
     parser.add_argument("--hidden_sizes", type=int)
     parser.add_argument("--learning_rate", type=float, default=None)
     parser.add_argument("--dropout", type=float)
+    parser.add_argument("--dropout_forward", type=bool)
     #BBB HPs
     parser.add_argument("--prior_mu", type=float, default=0)
     parser.add_argument("--prior_rho", type=float, default=0)
@@ -42,9 +43,9 @@ def get_args(config_file = '/configs/models/baseline.yaml', config_name = 'CYP')
 
     parser.add_argument("--save_model", type=bool)
     parser.add_argument("--evaluate_testset", type=bool)
-    parser.add_argument("--evaluate_samples", type=bool, default = True)
+    parser.add_argument("--evaluate_samples", type=bool, default = False)
     parser.add_argument("--use_nuts", type=bool, default = False)
-    parser.add_argument("--tune_mm", type=bool, default = True)
+    parser.add_argument("--tune_mm", type=bool, default = False)
     parser.add_argument("--device", type=str, default='gpu')
     parser.add_argument("--rep", type=int, default=0)
 

@@ -20,10 +20,10 @@ for key, value in vars(args).items():
 
 if args.evaluate_testset:
     project = 'UQ-HMC_Eval'
-    group = 'baseline_eval'
+    group = 'MLP_eval'
 else:
     project = 'UQ-HMC_Tune'
-    group = 'baseline_tune'  
+    group = 'MLP_tune'  
 
 run = wandb.init(project = project, 
                  tags = ['baseline'],
@@ -35,6 +35,7 @@ target_id = wandb.config.TargetID
 hidden_sizes = wandb.config.hidden_sizes
 weight_decay = wandb.config.weight_decay
 dropout = wandb.config.dropout
+dropout_forward = wandb.config.dropout_forward
 learning_rate = wandb.config.learning_rate
 model_loss = wandb.config.model_loss
 if model_loss == 'BCELoss':
@@ -43,6 +44,11 @@ else:
     pass
     #TODO: warning loss not implemented
 
+model = 'MCD' if dropout_forward else 'MLP'
+
+nr_forward_passes = 400 if dropout_forward else 1
+wandb.config['nr_forward_passes'] = nr_forward_passes 
+
 tr_fold = np.array(wandb.config.tr_fold)
 va_fold=wandb.config.va_fold
 te_fold=wandb.config.te_fold
@@ -50,6 +56,7 @@ te_fold=wandb.config.te_fold
 evaluate_testset = wandb.config.evaluate_testset
 save_model = wandb.config.save_model
 device = wandb.config.device
+rep = wandb.config.rep
 
 
 os.environ['CUDA_VISIBLE_DEVICES']='0'
@@ -86,6 +93,8 @@ net = MLP(
     dropout=dropout
     ).to(device)
 
+net.train()
+
 nr_epochs = 400
 criterion = model_loss
 optimizer = optim.Adam(net.parameters(), lr=learning_rate, weight_decay=weight_decay)
@@ -94,8 +103,8 @@ optimizer = optim.Adam(net.parameters(), lr=learning_rate, weight_decay=weight_d
 for epoch in tqdm(range(nr_epochs), desc=f'Training {nr_epochs} epochs:'):  # loop over the dataset multiple times 
     for X_batch, Y_batch in dataloader_tr:
         optimizer.zero_grad()      
-        # forward + backward + optimizer
-        net.eval()
+        if not dropout_forward:
+            net.eval()
         outputs = net(X_batch)
         net.train()
         loss = criterion(outputs, Y_batch)
@@ -103,14 +112,23 @@ for epoch in tqdm(range(nr_epochs), desc=f'Training {nr_epochs} epochs:'):  # lo
         optimizer.step()
         
     #get loss of each epoch for plotting convergence
-    net.eval()
+    if not dropout_forward:
+        net.eval()
 
-    pred_train = net(train_dataset.__getdatasets__()[0])
-    train_performance = BaselinePredictivePerformance(pred_train, train_dataset.__getdatasets__()[1], epoch, 'train')
+    pred_train = []
+    for forward_pass in range(nr_forward_passes):
+        pred_train.append(net(train_dataset.__getdatasets__()[0]))
+    pred_train = torch.stack(pred_train)
+    train_performance = BaselinePredictivePerformance(torch.mean(pred_train, axis = 0), train_dataset.__getdatasets__()[1], epoch, 'train')
+
     train_performance_epoch = train_performance.epoch_performance()
 
-    pred_val = net(val_dataset.__getdatasets__()[0])
-    val_performance = BaselinePredictivePerformance(pred_val, val_dataset.__getdatasets__()[1], epoch, 'val')
+    pred_val = []
+    for forward_pass in range(nr_forward_passes):
+        pred_val.append(net(val_dataset.__getdatasets__()[0]))
+    pred_val = torch.stack(pred_val)
+
+    val_performance = BaselinePredictivePerformance(torch.mean(pred_val, axis = 0), val_dataset.__getdatasets__()[1], epoch, 'val')
     val_performance_epoch = val_performance.epoch_performance()
 
     performance_epoch = train_performance_epoch | val_performance_epoch  
@@ -123,27 +141,34 @@ for epoch in tqdm(range(nr_epochs), desc=f'Training {nr_epochs} epochs:'):  # lo
         performance_best = {'best/' + key: value for key, value in performance_epoch.items()}
 
         if evaluate_testset:
-            pred_te = net(te_dataset.__getdatasets__()[0])
-            te_performance = BaselinePredictivePerformance(pred_te, te_dataset.__getdatasets__()[1], epoch, 'test')
+            pred_te= []
+            for forward_pass in range(nr_forward_passes):
+                pred_te.append(net(te_dataset.__getdatasets__()[0]))
+            pred_te = torch.stack(pred_te)
+            
+            te_performance = BaselinePredictivePerformance(torch.mean(pred_te, axis = 0), te_dataset.__getdatasets__()[1], epoch, 'test')
             te_performance_epoch = te_performance.epoch_performance()
 
             performance_best = performance_best | te_performance_epoch
+            print(performance_best)
 
-            res_dir = f'results/predictions/MLP/'
+            res_dir = f'results/predictions/{model}/'
+
             os.makedirs(res_dir, exist_ok = True)
-            res_path = f'{res_dir}{target_id}_nrl{nr_layers}_hs{hidden_sizes}_lr{learning_rate}_wd{weight_decay}_do{dropout}'
+            res_path = f'{res_dir}{target_id}_nrl{nr_layers}_hs{hidden_sizes}_lr{learning_rate}_wd{weight_decay}_do{dropout}_rep{rep}'
             np.save(res_path , pred_te.cpu().detach().numpy())
 
         if save_model:
+            ckpt_dir = f'results/models/{model}/'
 
-            ckpt_dir = f'results/models/MLP/'
             os.makedirs(ckpt_dir, exist_ok = True)
-            ckp_path = f'{ckpt_dir}{target_id}_nrl{nr_layers}_hs{hidden_sizes}_lr{learning_rate}_wd{weight_decay}_do{dropout}'
+            ckp_path = f'{ckpt_dir}{target_id}_nrl{nr_layers}_hs{hidden_sizes}_lr{learning_rate}_wd{weight_decay}_do{dropout}_rep{rep}'
 
             #Save model
             torch.save(net.state_dict(), ckp_path)
 
-            ckpt_lookup = f'configs/ckpt_paths/MLP.yaml'
+            ckpt_lookup = f'configs/ckpt_paths/{model}.yaml'
+            
             
             #Save to config file         
             if os.path.exists(ckpt_lookup):
